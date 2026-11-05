@@ -677,7 +677,8 @@ func cross(i: int, j: int) -> bool:
 
 
 ## Bắn phấn (gen cây bố) vào cây mẹ j. Cây mẹ sẽ kết dần SEEDS_PER_CROSS hạt, mỗi hạt sau 5 phút.
-func pollinate(j: int, father_gen: Dictionary) -> bool:
+## selfing = true: tự thụ phấn (phấn của chính cây j), hạt ra giống hệt cây đó.
+func pollinate(j: int, father_gen: Dictionary, selfing := false) -> bool:
 	if not can_cross(j):
 		message.emit("Chỉ thụ phấn được cho cây đang ra hoa và chưa thụ phấn.")
 		return false
@@ -688,10 +689,13 @@ func pollinate(j: int, father_gen: Dictionary) -> bool:
 	var b: Dictionary = pots[j]
 	b["da_lai"] = true
 	# một lần lai chỉ tạo một bộ gen: mọi hạt của lần lai này giống hệt nhau
-	var child := Gen.cross(b["gen"], father_gen, cross_mutation(b["gen"], father_gen))
+	var child: Dictionary = b["gen"].duplicate(true) if selfing else Gen.cross(b["gen"], father_gen, cross_mutation(b["gen"], father_gen))
 	b["qua"] = {"bo": father_gen.duplicate(true), "bo_me": [Gen.variety_key(b["gen"]), Gen.variety_key(father_gen)],
 		"t": 0.0, "con": Data.SEEDS_PER_CROSS, "san": 0, "gen_con": child}
-	message.emit("Thụ phấn thành công! Cây sẽ kết %d hạt, cứ %d phút một hạt." % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)])
+	if selfing:
+		message.emit("Tự thụ phấn thành công! Cây sẽ kết %d hạt giống hệt nó, cứ %d phút một hạt." % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)])
+	else:
+		message.emit("Thụ phấn thành công! Cây sẽ kết %d hạt, cứ %d phút một hạt." % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)])
 	_changed()
 	return true
 

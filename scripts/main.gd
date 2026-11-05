@@ -585,7 +585,7 @@ func _refresh_shelves() -> void:
 		s.show_buy_hint = i == gs.pots.size() and gs.pots.size() < Data.MAX_POTS
 		s.selected = i == selected
 		s.pollen_target = dragging_gun and i < gs.pots.size() and (
-			(gs.can_cross(i) and i != pollen_from) if not pollen_gen.is_empty() else _can_give_pollen(i))
+			gs.can_cross(i) if not pollen_gen.is_empty() else _can_give_pollen(i))
 		s.badge_count = 0
 		s.drop_target = dragging_seed and not s.locked and gs.pots[i].is_empty() and gs.soils[i] != ""
 		s.badge = ""
@@ -926,7 +926,10 @@ func _can_give_pollen(i: int) -> bool:
 	if i < 0 or i >= gs.pots.size():
 		return false
 	var p: Dictionary = gs.pots[i]
-	return not p.is_empty() and not p["chet"] and gs.stage_of(p) == 3 and not p.get("trung_bay", false)
+	# cây đang ra hoa, kể cả cây đã được thụ phấn và đang kết hạt, vẫn cho phấn được
+	if p.is_empty() or p["chet"] or p.get("trung_bay", false):
+		return false
+	return gs.stage_of(p) == 3 or (gs.stage_of(p) == 4 and gs.has_pod(i))
 
 
 func _gun_drag_data(b: Control):
@@ -940,7 +943,7 @@ func _gun_drag_data(b: Control):
 	holder.add_child(ic)
 	b.set_drag_preview(holder)
 	tool_icons["sung"].modulate.a = 0.0    # súng đang trên tay
-	_status("Thả súng vào cây đang ra hoa." if pollen_gen.is_empty() else "Thả súng vào cây ra hoa thứ hai để thụ phấn (%d xu)." % Data.POLLINATE_COST)
+	_status("Thả súng vào cây đang ra hoa." if pollen_gen.is_empty() else "Thả súng vào cây ra hoa để thụ phấn (%d xu), thả lại cây cũ là tự thụ phấn." % Data.POLLINATE_COST)
 	return {"sung": true}
 
 
@@ -970,11 +973,16 @@ func _drop_gun(i: int) -> void:
 		else:
 			pollen_gen = p["gen"].duplicate(true)
 			pollen_from = i
-			_status("Đã nạp phấn %s! Kéo súng tới cây ra hoa thứ hai để thụ phấn." % Gen.variety_name(p["gen"]))
+			_status("Đã nạp phấn %s! Kéo súng tới cây ra hoa khác để lai, hoặc thả lại chính cây này để tự thụ phấn." % Gen.variety_name(p["gen"]))
 	else:
-		if i == pollen_from:
-			_status("Đây là cây vừa lấy phấn. Hãy kéo súng tới một cây ra hoa khác.")
-		elif gs.pollinate(i, pollen_gen):
+		if not gs.can_cross(i):
+			if p.is_empty():
+				_status("Chậu này chưa có cây. Kéo súng tới cây đang ra hoa để thụ phấn.")
+			elif p.get("da_lai", false):
+				_status("Cây này đã được thụ phấn rồi. Hãy chọn cây ra hoa khác.")
+			else:
+				_status("Chỉ thụ phấn được cho cây đang ra hoa.")
+		elif gs.pollinate(i, pollen_gen, i == pollen_from):   # thả lại vào chính cây đó = tự thụ phấn
 			_unload_gun()
 			selected = i
 	_refresh_all()
@@ -1163,7 +1171,7 @@ func _open_help() -> void:
 		"  Đất tốt và Đất hiếm mua một lần ở mục Vật tư là dùng mãi.\n" +
 		"• Chạm vào cây để chọn, rồi bấm dụng cụ bên trái:\n" +
 		"    Bình tưới: tưới nước. Bao phân: lớn nhanh hơn. Kéo: thu hạt khi cây già.\n" +
-		("    Súng thụ phấn: kéo súng thả vào cây đang ra hoa để nạp phấn, rồi kéo tới cây ra hoa thứ hai để thụ phấn (%d xu).\n" % Data.POLLINATE_COST) +
+		("    Súng thụ phấn: kéo súng thả vào cây đang ra hoa để nạp phấn (cây đang kết hạt vẫn cho phấn), rồi kéo tới cây ra hoa khác để lai (%d xu).\n    Thả lại vào chính cây vừa lấy phấn là tự thụ phấn: hạt ra giống hệt cây đó.\n" % Data.POLLINATE_COST) +
 		("    Cây được thụ phấn kết %d hạt lai, cứ %d phút một hạt. Có hạt thì cạnh chậu hiện ký hiệu hạt: chạm vào cây để thu.\n" % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)]) +
 		"    Túi đất: chọn chậu trống rồi bấm túi đất để cho loại đất tốt nhất bạn có.\n" +
 		"• Thanh NƯỚC cạn thì cây ngừng lớn và mất SỨC KHỎE (cây càng hiếm mất càng nhanh); sức khỏe dưới một nửa là héo, hết là chết.\n" +
