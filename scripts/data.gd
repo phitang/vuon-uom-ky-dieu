@@ -202,7 +202,9 @@ const VIP_MIN_PLANTS := 1            # số cây tối thiểu đang bày bán
 const VIP_BROWSE_TIME := 10.0        # giây
 # Đàn anh đòi tiền bảo kê: tới khi shop không còn cây nào để bán quá BAO_KE_WAIT giây.
 const BAO_KE_WAIT := 120.0           # giây (2 phút)
-const BAO_KE_BANDAGE := 50           # tiền bông băng thuốc đỏ khi chọn "Đánh khứa này luôn"
+# "Đánh khứa này luôn" = oẳn tù tì 3 ván (hòa thì đánh lại). Tiền mất theo số ván thua: 0, 1, 2, 3 ván.
+const BAO_KE_FIGHT_COST := [0, 10, 20, 50]
+const RPS_ROUNDS := 3
 const BAO_KE_FEE := 100              # tiền bảo kê khi chọn "Đóng tiền bảo kê"
 const DISCOUNT := 0.10
 

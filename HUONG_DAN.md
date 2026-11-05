@@ -24,8 +24,8 @@ Dự án Godot 4 cho game trồng và lai giống cây trên Android, làm theo 
 - **Trang trí Shop cây:** chạm vào **bảng hiệu ở cổng** để đổi tên shop. Nút **Trang trí** ở góc trên bên phải mở cửa hàng: nâng cấp bảng hiệu, quầy tính tiền, hàng rào (mỗi loại 3 bậc) và 8 món trang trí (chuông gió, đèn lồng, bồn hoa, ghế đá, bàn ô dù, xích đu, tượng thỏ đá, cối xay gió). Mỗi bậc/món cộng 1 điểm **sức hút**: khách tới nhanh hơn 5% (tối đa gấp đôi) và dễ mua hơn 1% (tối đa 12%).
 - **Khách ẩn** (người chơi không được báo trước):
   - **Công tử ăn chơi** tới khi mọi cây đang bày bán đều Quý (hoặc hơn), và tới thêm một lần khi mọi cây đều Huyền thoại; mỗi mốc chỉ một lần. Khách thường vào xem 10 giây mà không mua, hai vệ sĩ vào đuổi hết khách, rồi công tử xem vài cây và ra quầy mua hết cây đang bày bán theo giá bạn đặt.
-  - **Đàn anh đòi tiền bảo kê** tới khi shop không còn cây nào để bán quá 2 phút. Chọn "Đánh khứa này luôn" thì mất 50 xu tiền bông băng thuốc đỏ; chọn "Đóng tiền bảo kê" thì mất 100 xu, gã khen "Ngoan lắm" rồi đi; chọn "Báo cảnh sát" thì gã bỏ đi.
-  - Các con số (10 giây, 2 phút, 50 xu, 100 xu, số cây tối thiểu) nằm ở mục "Khách ẩn" trong `scripts/data.gd`. Hình nhân vật tạo bằng `tools/tao_nhan_vat.py cong_tu ve_si dan_anh`.
+  - **Đàn anh đòi tiền bảo kê** tới khi shop không còn cây nào để bán quá 2 phút. Chọn "Đánh khứa này luôn" thì đấu **oẳn tù tì 3 ván** (hòa đánh lại): thắng cả 3 ván thì gã bị thâm mắt, bó bột tay, quấn băng bỏ chạy; thua 1/2/3 ván mất 10/20/50 xu (`BAO_KE_FIGHT_COST`); chọn "Đóng tiền bảo kê" thì mất 100 xu, gã khen "Ngoan lắm" rồi đi; chọn "Báo cảnh sát" thì gã bỏ đi.
+  - Các con số (10 giây, 2 phút, 50 xu, 100 xu, số cây tối thiểu) nằm ở mục "Khách ẩn" trong `scripts/data.gd`. Hình nhân vật tạo bằng `tools/tao_nhan_vat.py cong_tu ve_si dan_anh dan_anh_thuong`.
 - *Thùng rác* để bỏ cây. Menu dưới: Menu (cách chơi, chế độ thử nhanh, chơi lại), Vật tư, Sổ tay, Shop cây, nút ◀ ▶ để chuyển kệ.
 
 **Chơi thử nhanh:** bấm **Menu** → bật **Chế độ thử nhanh** (1 phút thật = 1 giờ trong game). Nhớ tắt khi chơi thật.

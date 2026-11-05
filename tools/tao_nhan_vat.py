@@ -65,6 +65,10 @@ CHARACTERS = {
     "dan_anh": dict(hair="troc", hair_c="1e1a18", skin="ngam", top="f4f1ea", bottom="3a4a3a",
                     shoes="2a2a2a", top_style="ba_lo", bottom_style="quan", chain=True,
                     tattoo=True, beard=True, scar=True),
+    # đàn anh sau khi thua oẳn tù tì: thâm mắt, quấn băng đầu, bó bột tay phải có dây treo
+    "dan_anh_thuong": dict(hair="troc", hair_c="1e1a18", skin="ngam", top="f4f1ea", bottom="3a4a3a",
+                           shoes="2a2a2a", top_style="ba_lo", bottom_style="quan", chain=True,
+                           tattoo=True, beard=True, scar=True, injured=True),
 }
 
 
@@ -210,6 +214,26 @@ def draw_character(cfg, frame):
             s.put(x0 + 1, y0 + 6, ink); s.put(x0, y0 + 7, ink); s.put(x0 + 2, y0 + 7, ink)
             s.put(x0 + 1, y0 + 8, hexc("b83a3a"))
 
+    if cfg.get("injured"):               # tay phải bó bột trắng, dây treo qua cổ
+        cast = hexc("d6e2ec")
+        edge = hexc("6f7f8c")
+        y0 = torso_top + oy
+        s.rect(21, y0 + 6, 26, y0 + 13, cast)
+        s.rect(14, y0 + 10, 22, y0 + 13, cast)
+        for x in range(14, 27):          # viền bột
+            if x <= 22 or x >= 21:
+                s.put(x, y0 + 14, edge)
+        s.rect(13, y0 + 10, 13, y0 + 13, edge, shaded=False)
+        s.rect(14, y0 + 9, 20, y0 + 9, edge, shaded=False)
+        s.rect(27, y0 + 6, 27, y0 + 13, edge, shaded=False)
+        s.rect(21, y0 + 5, 26, y0 + 5, edge, shaded=False)
+        for k in range(3):
+            s.put(16 + k * 2, y0 + 11, shade(cast, 0.8))
+            s.put(23, y0 + 7 + k * 2, shade(cast, 0.8))
+        sling = hexc("4a78c0")
+        for k in range(8):
+            s.put(13 + k, y0 + 2 + k, sling)
+            s.put(13 + k, y0 + 3 + k, sling)
     # --- đầu ---
     hy = head_top + oy
     s.rect(14, hy + 15, 17, hy + 17, shade(skin, 0.9), shaded=False)   # cổ
@@ -292,6 +316,18 @@ def draw_character(cfg, frame):
     if cfg.get("scar"):                   # vết sẹo trên mày
         sc = shade(skin, 0.75)
         s.put(19, ey - 3, sc); s.put(20, ey - 2, sc); s.put(19, ey - 1, sc)
+    if cfg.get("injured"):               # thâm mắt trái, băng quấn đầu, miếng dán má
+        bruise = hexc("6a3a7a")
+        for x, y in ((11, ey - 1), (14, ey - 1), (11, ey + 2), (12, ey + 2), (13, ey + 2), (14, ey + 2), (11, ey), (14, ey + 1)):
+            s.put(x, y, bruise)
+        s.put(12, ey, (30, 20, 20, 255))
+        band = hexc("f8f6ee")
+        s.rect(10, hy + 2, 21, hy + 4, band, shaded=False)
+        s.rect(19, hy + 1, 22, hy + 5, band, shaded=False)
+        s.put(15, hy + 3, hexc("c0392b"))
+        s.put(16, hy + 3, hexc("d65a4a"))
+        s.rect(18, ey + 3, 20, ey + 4, hexc("f2d39a"), shaded=False)
+        s.put(19, ey + 3, hexc("d9b070"))
     if cfg.get("sunglasses"):             # kính râm
         glass = (24, 24, 30, 255)
         s.rect(11, ey - 1, 14, ey + 1, glass, shaded=False)

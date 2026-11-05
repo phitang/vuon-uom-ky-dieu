@@ -783,10 +783,17 @@ func special_finished(c: Dictionary, result: String) -> void:
 		set_status("Công tử mua sạch %d cây, bạn nhận %d xu!" % [c.get("sold_n", 0), c.get("sold_total", 0)])
 	else:
 		match result:
-			"danh":
-				_leave(c, "Ui da! Nhớ mặt đó!")
-				c["speed"] = 1.9
-				set_status("Bạn đánh khứa đó chạy mất dép, nhưng tốn 50 xu bông băng thuốc đỏ.")
+			"danh_thang":   # thắng cả 3 ván: gã bầm dập, bó bột bỏ chạy
+				node.setup("bao_ke", -1, "dan_anh_thuong")
+				_leave(c, "Chờ đó, ta sẽ quay lại!")
+				c["speed"] = 1.6
+				set_status("Bạn thắng cả 3 ván oẳn tù tì! Gã bảo kê bầm dập bỏ chạy.")
+			"danh_thua":
+				_leave(c, "Biết điều chưa!")
+				node.set_mood(1)
+				set_status("Bạn thua oẳn tù tì, mất %d xu." % c.get("fight_paid", 0))
+			"danh":         # bỏ dở giữa chừng
+				_leave(c, "Hừ, lần sau nhé!")
 			"dong_tien":
 				_leave(c, "Ngoan lắm!")
 				node.set_mood(1)

@@ -1048,9 +1048,9 @@ func pay_protection() -> int:
 	return paid
 
 
-## Đánh nhau với đàn anh bảo kê: mua bông băng thuốc đỏ. Trả về số xu đã trả.
-func pay_bandage() -> int:
-	var paid := mini(coins, Data.BAO_KE_BANDAGE)
+## Thua oẳn tù tì với đàn anh bảo kê: mất tiền chữa trị theo số ván thua. Trả về số xu đã trả.
+func pay_fight(losses: int) -> int:
+	var paid := mini(coins, int(Data.BAO_KE_FIGHT_COST[clampi(losses, 0, 3)]))
 	coins -= paid
 	_changed()
 	return paid

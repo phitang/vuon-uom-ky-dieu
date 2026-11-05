@@ -74,10 +74,47 @@ func _ready() -> void:
 	var c0: int = gs.coins
 	_find_button(main.overlay, "Đánh khứa này luôn").pressed.emit()
 	await get_tree().process_frame
-	print("Đánh: xu ", c0, " -> ", gs.coins)
-	await _shot("an_9_danh.png")
+	await _shot("an_9_oan_tu_ti.png")
+	# hòa không tính ván, rồi thắng cả 3 ván
+	main._rps_reveal("bua", "bua")
+	print("Hòa: ván ", main.rps["round"], " | ", main.rps["info"].text)
+	for k in 3:
+		main._rps_reveal("bao", "bua")
+	print("Thắng 3 ván: xu ", c0, " -> ", gs.coins, " | kết quả ", main.special_ctx["result"])
+	await _shot("an_9b_thang.png")
 	_find_button(main.overlay, "Tiếp tục").pressed.emit()
+	await _run(0.5)
+	await _shot("an_9c_bo_chay.png")
 	await _run_until(func(): return nur.event == "", 20.0)
+	# thua 1, 2, 3 ván
+	for losses in [1, 2, 3]:
+		await _run(121.0)
+		await _run_until(func(): return main.overlay.visible, 20.0)
+		gs.coins = 100
+		_find_button(main.overlay, "Đánh khứa này luôn").pressed.emit()
+		await get_tree().process_frame
+		if losses == 3:   # ván đầu chạy hoạt ảnh thật "Oẳn… tù… tì!"
+			main._rps_pick("keo")
+			await get_tree().create_timer(0.5).timeout
+			await _shot("an_9d_oan.png")
+			await get_tree().create_timer(0.8).timeout
+			print("Ván thật: ", main.rps["info"].text)
+		while not main.rps.is_empty():
+			var need_lose: bool = main.rps["lose"] < losses
+			if need_lose:
+				main._rps_reveal("bua", "bao")
+			else:
+				main._rps_reveal("bao", "bua")
+		print("Muốn thua %d ván: xu 100 -> %d | %s" % [losses, gs.coins, main.special_ctx.get("result", "")])
+		var lbls: Array = []
+		_collect_labels(main.overlay, lbls)
+		for l in lbls:
+			if "xu" in l.text and ("mất" in l.text or "Mất" in l.text):
+				print("   ", l.text)
+		if losses == 3:
+			await _shot("an_9e_thua3.png")
+		_find_button(main.overlay, "Tiếp tục").pressed.emit()
+		await _run_until(func(): return nur.event == "", 20.0)
 	await _run(121.0)
 	await _run_until(func(): return main.overlay.visible, 20.0)
 	_find_button(main.overlay, "Báo cảnh sát").pressed.emit()
@@ -152,6 +189,13 @@ func _run_until(cond: Callable, max_sec: float) -> void:
 		nur._process(0.05)
 		t += 0.05
 	await get_tree().process_frame
+
+
+func _collect_labels(root: Node, out: Array) -> void:
+	for n in root.get_children():
+		if n is Label:
+			out.append(n)
+		_collect_labels(n, out)
 
 
 func _find_button(root: Node, text: String) -> Button:

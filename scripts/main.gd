@@ -1464,15 +1464,7 @@ func _open_bao_ke(c: Dictionary) -> void:
 	var btns := VBoxContainer.new()
 	btns.add_theme_constant_override("separation", 8)
 	right.add_child(btns)
-	btns.add_child(_button("Đánh khứa này luôn", func():
-		special_ctx["result"] = "danh"
-		var paid: int = gs.pay_bandage()
-		cv.set_mood(-1)
-		say.text = "\"Ui da! Ui da! Được lắm, nhớ mặt đó!\""
-		info.text = "Bạn đánh khứa đó chạy mất dép! Nhưng bạn cũng sứt đầu mẻ trán, phải mua bông băng thuốc đỏ tốn %d xu." % paid
-		info.add_theme_color_override("font_color", DANGER)
-		_clear(btns)
-		btns.add_child(_button("Tiếp tục", _close_popup, PRIMARY)), DANGER))
+	btns.add_child(_button("Đánh khứa này luôn", func(): _rps_start(c, cv, say, info, btns), DANGER))
 	btns.add_child(_button("Đóng tiền bảo kê", func():
 		special_ctx["result"] = "dong_tien"
 		var paid: int = gs.pay_protection()
@@ -1488,6 +1480,229 @@ func _open_bao_ke(c: Dictionary) -> void:
 		info.text = "Gã bảo kê hằm hằm bỏ đi."
 		_clear(btns)
 		btns.add_child(_button("Tiếp tục", _close_popup, PRIMARY)), Color("3a6fb0")))
+
+
+# ---------- Oẳn tù tì với đàn anh bảo kê ----------
+
+const RPS_NAMES := {"bua": "Búa", "keo": "Kéo", "bao": "Bao"}
+const RPS_BEATS := {"bua": "keo", "keo": "bao", "bao": "bua"}   # cái bên trái thắng cái bên phải
+var rps := {}
+
+
+func _rps_start(c: Dictionary, cv: Control, say: Label, info: Label, btns: VBoxContainer) -> void:
+	special_ctx["result"] = "danh"
+	_clear(btns)
+	say.text = "\"Dám đánh anh à? Chơi oẳn tù tì 3 ván, thua thì đừng có khóc!\""
+	var arena := HBoxContainer.new()
+	arena.alignment = BoxContainer.ALIGNMENT_CENTER
+	arena.add_theme_constant_override("separation", 26)
+	btns.add_child(arena)
+	var mine := _hand_box(arena, "Bạn")
+	var vs := _label("VS", 30, DANGER, HORIZONTAL_ALIGNMENT_CENTER)
+	vs.autowrap_mode = TextServer.AUTOWRAP_OFF
+	vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	arena.add_child(vs)
+	var theirs := _hand_box(arena, "Đàn anh")
+	var score := _label("", 20, MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	btns.add_child(score)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	btns.add_child(row)
+	rps = {"c": c, "cv": cv, "say": say, "info": info, "btns": btns, "row": row, "mine": mine, "theirs": theirs,
+		"score": score, "round": 1, "win": 0, "lose": 0, "busy": false}
+	for k in ["bua", "keo", "bao"]:
+		var b := _button(RPS_NAMES[k], func(): _rps_pick(k), Color("6a4a8a"))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y = 64
+		b.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		var ic := HandIcon.new()
+		ic.kind = k
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.position = Vector2(6, 4)
+		ic.size = Vector2(56, 56)
+		b.add_child(ic)
+		row.add_child(b)
+	info.text = "Oẳn tù tì %d ván, hòa thì đánh lại. Chọn Búa, Kéo hoặc Bao!" % Data.RPS_ROUNDS
+	_rps_score()
+
+
+func _hand_box(parent: Control, who: String) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	parent.add_child(v)
+	var ic := HandIcon.new()
+	ic.custom_minimum_size = Vector2(150, 130)
+	v.add_child(ic)
+	v.add_child(_label(who, 18, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	return ic
+
+
+func _rps_score() -> void:
+	rps["score"].text = "Ván %d/%d  ·  Bạn thắng %d  ·  Thua %d" % [mini(rps["round"], Data.RPS_ROUNDS), Data.RPS_ROUNDS, rps["win"], rps["lose"]]
+
+
+func _rps_pick(k: String) -> void:
+	if rps.is_empty() or rps["busy"]:
+		return
+	rps["busy"] = true
+	for b in rps["row"].get_children():
+		b.disabled = true
+	var mine: Control = rps["mine"]
+	var theirs: Control = rps["theirs"]
+	mine.kind = "bua"
+	theirs.kind = "bua"
+	mine.shake = true
+	theirs.shake = true
+	var info: Label = rps["info"]
+	info.remove_theme_color_override("font_color")
+	var tw := create_tween()
+	for word in ["Oẳn…", "tù…", "tì!"]:
+		tw.tween_callback(func():
+			if is_instance_valid(info):
+				info.text = word)
+		tw.tween_interval(0.32)
+	tw.tween_callback(func(): _rps_reveal(k))
+
+
+func _rps_reveal(k: String, their := "") -> void:
+	if rps.is_empty() or not is_instance_valid(rps["info"]):
+		return
+	if their == "":
+		their = ["bua", "keo", "bao"].pick_random()
+	var mine: Control = rps["mine"]
+	var theirs: Control = rps["theirs"]
+	mine.shake = false
+	theirs.shake = false
+	mine.kind = k
+	theirs.kind = their
+	var info: Label = rps["info"]
+	var cv: Control = rps["cv"]
+	var n: int = rps["round"]
+	if k == their:
+		info.text = "Hòa! Cả hai cùng ra %s. Đánh lại ván %d." % [RPS_NAMES[k], n]
+	elif RPS_BEATS[k] == their:
+		rps["win"] += 1
+		rps["round"] += 1
+		cv.set_mood(-1)
+		rps["say"].text = ["\"Á! Ăn may thôi!\"", "\"Ui da! Chơi lại!\"", "\"Không thể nào!\""].pick_random()
+		info.text = "%s thắng %s: bạn thắng ván %d!" % [RPS_NAMES[k], RPS_NAMES[their], n]
+		info.add_theme_color_override("font_color", PRIMARY)
+	else:
+		rps["lose"] += 1
+		rps["round"] += 1
+		cv.set_mood(1)
+		rps["say"].text = ["\"Hà hà, non lắm!\"", "\"Biết sợ chưa?\"", "\"Đỡ nè!\""].pick_random()
+		info.text = "%s thua %s: bạn thua ván %d!" % [RPS_NAMES[k], RPS_NAMES[their], n]
+		info.add_theme_color_override("font_color", DANGER)
+	_rps_score()
+	if rps["round"] > Data.RPS_ROUNDS:
+		_rps_end()
+		return
+	rps["busy"] = false
+	for b in rps["row"].get_children():
+		b.disabled = false
+
+
+func _rps_end() -> void:
+	var c: Dictionary = rps["c"]
+	var cv: Control = rps["cv"]
+	var info: Label = rps["info"]
+	var say: Label = rps["say"]
+	var losses: int = rps["lose"]
+	var paid: int = gs.pay_fight(losses)
+	c["fight_paid"] = paid
+	var cost: int = Data.BAO_KE_FIGHT_COST[losses]
+	var note := "" if paid == cost else " (bạn chỉ còn %d xu)" % paid
+	match losses:
+		0:
+			special_ctx["result"] = "danh_thang"
+			cv.setup("bao_ke", -1, "dan_anh_thuong")   # thâm mắt, bó bột tay, băng đầu
+			cv.set_hd(true)
+			say.text = "\"Chờ đó, ta sẽ quay lại lợi hại hơn, đợi đi!\""
+			info.text = "Bạn thắng cả 3 ván! Đàn anh bầm dập, bó bột tay ôm đầu bỏ chạy."
+			info.add_theme_color_override("font_color", PRIMARY)
+		1:
+			info.text = "Bạn đã mất %d xu để mua bông băng thuốc đỏ.%s" % [paid, note]
+		2:
+			info.text = "Bác sĩ bó tay bạn. Mất %d xu.%s" % [paid, note]
+		_:
+			info.text = "Bạn nhập viện và xém lên bàn thờ ngắm chuối rồi! Mất %d xu.%s" % [paid, note]
+	if losses > 0:
+		special_ctx["result"] = "danh_thua"
+		cv.set_mood(1)
+		say.text = "\"Biết điều chưa? Lần sau nhớ đóng tiền đàng hoàng!\""
+		info.add_theme_color_override("font_color", DANGER)
+	var row: Control = rps["row"]
+	var btns: VBoxContainer = rps["btns"]
+	row.queue_free()
+	btns.add_child(_button("Tiếp tục", _close_popup, PRIMARY))
+	rps = {}
+
+
+## Bàn tay oẳn tù tì vẽ bằng code: "bua" nắm đấm, "keo" hai ngón chữ V, "bao" bàn tay xòe.
+class HandIcon extends Control:
+	var kind := "":
+		set(v):
+			kind = v
+			queue_redraw()
+	var shake := false
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		if shake:
+			_t += delta
+			queue_redraw()
+
+	func _draw() -> void:
+		if kind == "":
+			return
+		var s: float = minf(size.x, size.y) / 64.0
+		var c := size / 2.0 + Vector2(0, 4) * s
+		if shake:
+			c.y += sin(_t * 22.0) * 6.0 * s
+		var skin := Color("f2c9a0")
+		var dark := Color("b9845a")
+		var line := Color("6b4428")
+		# lòng bàn tay
+		var palm := Rect2(c + Vector2(-14, -6) * s, Vector2(28, 26) * s)
+		var fingers_up: Array = []
+		match kind:
+			"keo": fingers_up = [0, 1]
+			"bao": fingers_up = [0, 1, 2, 3]
+		for i in 4:
+			var fx := -14.0 + i * 7.0
+			if i in fingers_up:
+				var top := -30.0 + absf(i - 1.5) * 3.0
+				var r := Rect2(c + Vector2(fx, top) * s, Vector2(7, -6.0 - top + 6) * s)
+				if kind == "keo":    # hai ngón xòe chữ V
+					var ang := -0.28 if i == 0 else 0.28
+					var base := c + Vector2(fx + 3.5, -4) * s
+					var tip := base + Vector2(sin(ang), -cos(ang)) * 26.0 * s
+					draw_line(base, tip, line, 9.0 * s)
+					draw_line(base, tip, skin, 6.6 * s)
+					draw_circle(tip, 3.3 * s, skin)
+					continue
+				draw_rect(r.grow(1.2 * s), line)
+				draw_rect(r, skin)
+				draw_circle(Vector2(r.get_center().x, r.position.y), 3.5 * s, skin)
+			else:   # ngón gập: đốt tay tròn
+				draw_circle(c + Vector2(fx + 3.5, -6) * s, 4.8 * s, line)
+				draw_circle(c + Vector2(fx + 3.5, -6) * s, 3.8 * s, skin)
+		draw_rect(palm.grow(1.2 * s), line)
+		draw_rect(palm, skin)
+		for i in 4:
+			if not (i in fingers_up):
+				var fx := -14.0 + i * 7.0
+				draw_circle(c + Vector2(fx + 3.5, -6) * s, 3.8 * s, skin)
+				draw_line(c + Vector2(fx + 1, -2) * s, c + Vector2(fx + 6, -2) * s, dark, 1.2 * s)
+		# ngón cái
+		var thumb_a := c + Vector2(-14, 6) * s if kind == "bao" else c + Vector2(-12, 7) * s
+		var thumb_b := c + Vector2(-24, -6) * s if kind == "bao" else c + Vector2(2, 5) * s
+		draw_line(thumb_a, thumb_b, line, 9.0 * s)
+		draw_line(thumb_a, thumb_b, skin, 6.6 * s)
+		draw_circle(thumb_b, 3.3 * s, skin)
+		# cổ tay áo
+		draw_rect(Rect2(c + Vector2(-13, 20) * s, Vector2(26, 8) * s), Color("4a78c0"))
 
 
 # =====================================================================
