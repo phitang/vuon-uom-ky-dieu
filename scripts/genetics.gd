@@ -96,7 +96,8 @@ static func random_genome(max_hiem: int) -> Dictionary:
 	return gen
 
 
-## Lai hai cây, trả về một hạt (bộ gen mới).
+## Lai hai cây, trả về một hạt (bộ gen mới). Gen bố mẹ truyền lại theo Mendel nên bố mẹ
+## mang kiểu hiếm thì con dễ ra hiếm; ngoài ra có mutation_chance khả năng đột biến.
 static func cross(gen_a: Dictionary, gen_b: Dictionary, mutation_chance: float) -> Dictionary:
 	var child := {}
 	# mỗi hạt có mutation_chance khả năng đột biến ở đúng một bộ phận

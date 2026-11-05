@@ -1557,11 +1557,139 @@ func _refresh_shop() -> void:
 		elif gs.coins < price or (id == "chau" and gs.pots.size() >= Data.MAX_POTS):
 			b.disabled = true
 		row.add_child(b)
+	# Bán hạt: mở túi hạt để chọn hạt bán
+	var sp := PanelContainer.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.add_theme_stylebox_override("panel", _framed(Color("e8f3dc"), GOLD, 10, 2))
+	grid.add_child(sp)
+	var srow := HBoxContainer.new()
+	sp.add_child(srow)
+	var sic := Control.new()
+	sic.custom_minimum_size = Vector2(56, 56)
+	sic.add_child(_icon("hat", Vector2(56, 56)))
+	srow.add_child(sic)
+	var sv := VBoxContainer.new()
+	sv.add_theme_constant_override("separation", 0)
+	sv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	srow.add_child(sv)
+	sv.add_child(_label("Bán hạt", 21, INK))
+	sv.add_child(_label("Thường %d · Hiếm %d · Quý %d · Huyền thoại %d xu" % Data.SEED_SELL_PRICE, 16, MUTED))
+	var sb := _button("Túi hạt", _open_sell_seeds, PRIMARY)
+	sb.custom_minimum_size.x = 120
+	sb.disabled = gs.seeds.is_empty()
+	srow.add_child(sb)
 	var lv: int = gs.garden_level()
 	if lv < Data.LEVEL_REVENUE.size():
 		shop_box.add_child(_label("Cấp vườn %d · Doanh thu %d xu. Đạt %d xu để lên cấp %d." % [lv, gs.revenue, Data.LEVEL_REVENUE[lv], lv + 1], 19, MUTED))
 	else:
 		shop_box.add_child(_label("Cấp vườn %d (cao nhất) · Doanh thu %d xu." % [lv, gs.revenue], 19, MUTED))
+
+
+# =====================================================================
+# Bán hạt
+# =====================================================================
+
+var sell_pick := -1
+
+
+func _open_sell_seeds() -> void:
+	sell_pick = -1
+	var box := _open_popup("Bán hạt", 900, 640)
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 10)
+	box.add_child(holder)
+	var back := _button("Quay lại Vật tư", _open_shop)
+	box.add_child(back)
+	var refresh := func(): _refresh_sell_seeds(holder)
+	popup_refresh = refresh
+	refresh.call()
+
+
+func _seed_kind(idx: int) -> Dictionary:
+	var g: Dictionary = gs.seeds[idx]["gen"]
+	return {"hoa": Gen.expressed(g, "hoa"), "hiem": Gen.rarity(g)}
+
+
+func _refresh_sell_seeds(holder: VBoxContainer) -> void:
+	if not is_instance_valid(holder):
+		return
+	_clear(holder)
+	if sell_pick >= gs.seeds.size():
+		sell_pick = -1
+	holder.add_child(_label("Bạn có %d xu · Túi hạt %d/%d. Chạm vào một hạt để chọn." % [gs.coins, gs.seeds.size(), gs.seed_capacity()], 19, MUTED))
+	if gs.seeds.is_empty():
+		holder.add_child(_label("Túi hạt đang trống.", 22, INK))
+		return
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	holder.add_child(grid)
+	for i in gs.seeds.size():
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(88, 88)
+		b.focus_mode = Control.FOCUS_NONE
+		var picked: bool = i == sell_pick
+		var st := UiSkin.inset_box(Color("f6d98a") if picked else Color("5a3a22"), Vector4(4, 4, 4, 4))
+		for k in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(k, st)
+		var idx: int = i
+		b.pressed.connect(func():
+			sell_pick = idx
+			_refresh_sell_seeds(holder))
+		var ic := SeedBag.SeedPreview.new()
+		ic.kind = _seed_kind(i)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		b.add_child(ic)
+		var pl := Label.new()
+		pl.text = "%d" % gs.seed_sell_price(i)
+		pl.add_theme_font_size_override("font_size", 15)
+		pl.add_theme_color_override("font_color", Color("ffe08a"))
+		pl.add_theme_color_override("font_outline_color", Color(0.2, 0.1, 0, 1))
+		pl.add_theme_constant_override("outline_size", 4)
+		pl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+		pl.offset_left = -40
+		pl.offset_top = -24
+		pl.offset_right = -6
+		pl.offset_bottom = -2
+		pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		pl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(pl)
+		grid.add_child(b)
+	# hạt đang chọn: hỏi bán hay không
+	if sell_pick >= 0:
+		var k := _seed_kind(sell_pick)
+		var parents: Array = gs.seeds[sell_pick].get("bo_me", [])
+		var from := "mua ở cửa hàng"
+		if parents.size() == 2:
+			var a := Gen.variety_name_of_pheno(Gen.phenotype_from_key(parents[0]))
+			var c := Gen.variety_name_of_pheno(Gen.phenotype_from_key(parents[1]))
+			from = "thu từ %s" % a if parents[0] == parents[1] else "lai %s × %s" % [a, c]
+		var price: int = gs.seed_sell_price(sell_pick)
+		var pane := PanelContainer.new()
+		pane.add_theme_stylebox_override("panel", _framed(Color("fff1dc"), Color("e2c48c"), 10, 2))
+		holder.add_child(pane)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		pane.add_child(row)
+		var info := _label("Hạt %s · %s (%s)\nBán hạt này được %d xu?" % [
+			Data.trait_name("hoa", k["hoa"]).to_lower(), Data.RARITY_NAMES[k["hiem"]], from, price], 21, INK)
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		var no := _button("Không", func():
+			sell_pick = -1
+			_refresh_sell_seeds(holder))
+		no.custom_minimum_size.x = 130
+		row.add_child(no)
+		var yes := _button("Bán %d xu" % price, func():
+			var idx2 := sell_pick
+			sell_pick = -1
+			if idx2 == selected_seed:
+				selected_seed = 0
+			gs.sell_seed(idx2), ACCENT)
+		yes.custom_minimum_size.x = 150
+		row.add_child(yes)
 
 
 # =====================================================================

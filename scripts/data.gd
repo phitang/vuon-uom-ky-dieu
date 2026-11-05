@@ -127,6 +127,11 @@ const MAX_SEED_BAGS := 6
 const SEEDS_PER_CROSS := 3          # số hạt một lần thụ phấn cho ra (cây mẹ kết dần từng hạt)
 const SEED_POD_INTERVAL := 300.0     # cứ 5 phút (thời gian trong game) cây mẹ kết thêm 1 hạt
 const BASE_MUTATION := 0.02
+## Lai giống: mỗi độ hiếm của cây bố và cây mẹ cộng thêm tỉ lệ đột biến ra kiểu hiếm.
+## Ví dụ Thường × Thường: 2%; Hiếm × Hiếm: 2% + 2 x 3% = 8%; Quý × Quý: 14%.
+const MUTATION_PER_RARITY := 0.03
+## Giá bán hạt ở mục Vật tư theo độ hiếm: Thường, Hiếm, Quý, Huyền thoại.
+const SEED_SELL_PRICE := [5, 15, 30, 50]
 const LEVEL_REVENUE := [0, 500, 2000, 8000, 25000]   # doanh thu để lên cấp vườn 1..5
 const COLLECTION_MILESTONE := 25
 const MILESTONE_COINS := 200

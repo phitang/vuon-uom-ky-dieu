@@ -358,8 +358,10 @@ func harvest_pod(i: int) -> int:
 	var p: Dictionary = pots[i]
 	var q: Dictionary = p["qua"]
 	var take := mini(n, room)
+	if not _valid_gen(q.get("gen_con")):   # file lưu cũ: tạo bộ gen con một lần rồi giữ lại
+		q["gen_con"] = Gen.cross(p["gen"], q["bo"], cross_mutation(p["gen"], q["bo"]))
 	for k in take:
-		seeds.append({"gen": Gen.cross(p["gen"], q["bo"], mutation_chance()), "bo_me": q["bo_me"]})
+		seeds.append({"gen": q["gen_con"].duplicate(true), "bo_me": q["bo_me"]})
 	q["san"] = n - take
 	if int(q["san"]) <= 0 and int(q["con"]) <= 0:
 		p.erase("qua")
@@ -636,6 +638,29 @@ func mutation_chance() -> float:
 	return Data.BASE_MUTATION + 0.01 * (garden_level() - 1)
 
 
+## Tỉ lệ đột biến khi lai hai cây: càng hiếm càng cao.
+func cross_mutation(gen_a: Dictionary, gen_b: Dictionary) -> float:
+	return mutation_chance() + Data.MUTATION_PER_RARITY * (Gen.rarity(gen_a) + Gen.rarity(gen_b))
+
+
+## Giá bán một hạt trong túi.
+func seed_sell_price(idx: int) -> int:
+	if idx < 0 or idx >= seeds.size():
+		return 0
+	return Data.SEED_SELL_PRICE[Gen.rarity(seeds[idx]["gen"])]
+
+
+func sell_seed(idx: int) -> int:
+	var price := seed_sell_price(idx)
+	if price <= 0:
+		return 0
+	seeds.remove_at(idx)
+	coins += price
+	message.emit("Đã bán hạt được %d xu." % price)
+	_changed()
+	return price
+
+
 func can_cross(i: int) -> bool:
 	if i < 0 or i >= pots.size():
 		return false
@@ -662,8 +687,10 @@ func pollinate(j: int, father_gen: Dictionary) -> bool:
 	coins -= Data.POLLINATE_COST
 	var b: Dictionary = pots[j]
 	b["da_lai"] = true
+	# một lần lai chỉ tạo một bộ gen: mọi hạt của lần lai này giống hệt nhau
+	var child := Gen.cross(b["gen"], father_gen, cross_mutation(b["gen"], father_gen))
 	b["qua"] = {"bo": father_gen.duplicate(true), "bo_me": [Gen.variety_key(b["gen"]), Gen.variety_key(father_gen)],
-		"t": 0.0, "con": Data.SEEDS_PER_CROSS, "san": 0}
+		"t": 0.0, "con": Data.SEEDS_PER_CROSS, "san": 0, "gen_con": child}
 	message.emit("Thụ phấn thành công! Cây sẽ kết %d hạt, cứ %d phút một hạt." % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)])
 	_changed()
 	return true
