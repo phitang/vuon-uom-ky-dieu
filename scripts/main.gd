@@ -20,6 +20,8 @@ const Vines := preload("res://scripts/vines.gd")
 const DragScroll := preload("res://scripts/drag_scroll.gd")
 const DecorPreview := preload("res://scripts/decor_preview.gd")
 const WaterAnim := preload("res://scripts/water_anim.gd")
+const ToolAnim := preload("res://scripts/tool_anim.gd")
+var tool_busy := false      # đang chạy hoạt ảnh xúc đất / cắt kéo
 const FONT_BOLD := preload("res://fonts/Lora-700.ttf")
 const FONT_MEDIUM := preload("res://fonts/Lora-500.ttf")
 const SLATE := Color("4a5866")
@@ -632,7 +634,7 @@ func _refresh_tools() -> void:
 	var st: int = gs.stage_of(p) if not p.is_empty() else -1
 	tool_icons["nuoc"].dim = not alive
 	tool_icons["phan"].count = gs.fertilizer
-	tool_icons["phan"].dim = not alive or gs.fertilizer <= 0 or st >= 3
+	tool_icons["phan"].dim = not alive or gs.fertilizer <= 0 or (st >= 3 and float(p.get("suc_khoe", 1.0)) >= 0.995)
 	tool_icons["keo"].dim = not alive or st < 4
 	tool_icons["sung"].loaded = not pollen_gen.is_empty()
 	tool_icons["sung"].highlight = not pollen_gen.is_empty()
@@ -879,16 +881,25 @@ func _use_tool(kind: String) -> void:
 		"phan":
 			if gs.fertilizer <= 0:
 				_status("Hết phân bón. Mua ở mục Vật tư.")
-			elif st >= 3:
-				_status("Cây đã ra hoa, không cần bón phân nữa.")
-			elif gs.fertilize(selected):
-				_status("Đã bón phân, cây lớn nhanh hơn.")
+			else:
+				gs.fertilize(selected)
 		"keo":
 			if st < 4:
 				_status("Kéo dùng để thu hạt khi cây đã già.")
-			else:
-				gs.harvest_seeds(selected)
-				selected = -1
+			elif gs.has_pod(selected):
+				_status("Cây đang kết hạt lai. Chạm vào cây để thu hạt lai trước đã.")
+			elif not tool_busy:
+				# kéo lượn quanh bông hoa cắt xong mới thu hạt
+				var pot := selected
+				var ok := _play_tool("keo", pot, func():
+					if pot < gs.pots.size() and not gs.pots[pot].is_empty():
+						gs.harvest_seeds(pot)
+						if selected == pot:
+							selected = -1
+					_refresh_all())
+				if not ok:
+					gs.harvest_seeds(pot)
+					selected = -1
 	_refresh_all()
 
 
@@ -901,8 +912,46 @@ func _use_soil_bag() -> void:
 	if not gs.pots[selected].is_empty():
 		_status("Chậu đang có cây. Chỉ cho đất vào chậu trống.")
 		return
-	gs.fill_soil(selected, t)
+	if gs.soils[selected] == t:
+		gs.fill_soil(selected, t)    # báo "chậu đã có đất này rồi"
+		return
+	if tool_busy:
+		return
+	# bao đất đặt cạnh chậu, xẻng xúc đất đổ vào xong mới có đất
+	var pot := selected
+	if not _play_tool("dat", pot, func():
+			gs.fill_soil(pot, t)
+			_refresh_all()):
+		gs.fill_soil(pot, t)
 	_refresh_all()
+
+
+## Chạy hoạt ảnh dụng cụ trên chậu i; on_done chạy khi hoạt ảnh xong. Trả về false nếu chậu không hiện trên kệ.
+func _play_tool(mode: String, i: int, on_done: Callable) -> bool:
+	var kk := i - shelf_page * SLOTS_PER_PAGE
+	if kk < 0 or kk >= SLOTS_PER_PAGE:
+		return false
+	var r: Rect2 = slots[kk].get_global_rect()
+	var anim := Control.new()
+	anim.set_script(ToolAnim)
+	anim.mode = mode
+	anim.k = clampf(r.size.y / 125.0, 0.8, 1.6)
+	anim.soil_pos = Vector2(r.get_center().x, r.end.y - (r.size.y - 2.0) * 0.40)
+	anim.flower_pos = Vector2(r.get_center().x, r.position.y + r.size.y * 0.22)
+	if mode == "dat":
+		var t: String = gs.best_soil()
+		anim.bag_color = {"thuong": Color("d8b878"), "tot": Color("7fb66a"), "hiem": Color("9b6fc8")}.get(t, Color("d8b878"))
+		anim.soil_color = {"thuong": Color("6b4a2e"), "tot": Color("4a3420"), "hiem": Color("3a2a3a")}.get(t, Color("6b4a2e"))
+	elif not gs.pots[i].is_empty():
+		anim.petal_color = Data.FLOWER_COLORS.get(Gen.expressed(gs.pots[i]["gen"], "mau"), Color("e85a7a"))
+	tool_busy = true
+	anim.on_done = func():
+		tool_busy = false
+		on_done.call()
+	anim.z_index = 50
+	add_child(anim)
+	move_child(anim, nursery.get_index())
+	return true
 
 
 ## Hoạt ảnh bình tưới trên chậu i (nếu chậu đang hiện trên kệ).
@@ -1180,7 +1229,8 @@ func _open_help() -> void:
 		"• Cây Hiếm cần Đất tốt, cây Quý và Huyền thoại cần Đất hiếm; đất kém hơn thì sức khỏe giảm dần.\n" +
 		"  Đất tốt và Đất hiếm mua một lần ở mục Vật tư là dùng mãi.\n" +
 		"• Chạm vào cây để chọn, rồi bấm dụng cụ bên trái:\n" +
-		"    Bình tưới: tưới nước. Bao phân: lớn nhanh hơn. Kéo: thu hạt khi cây già.\n" +
+		"    Bình tưới: tưới nước. Bao phân: hồi 35% sức khỏe, cây chưa ra hoa lớn nhanh hơn. Kéo: thu hạt khi cây già.\n" +
+		"    Đất kém hơn cây cần làm cây mất sức khỏe nhanh và không tự hồi: phải bón phân để cứu cây.\n" +
 		("    Súng thụ phấn: kéo súng thả vào cây đang ra hoa để nạp phấn (cây đang kết hạt vẫn cho phấn), rồi kéo tới cây ra hoa khác để lai (%d xu).\n    Thả lại vào chính cây vừa lấy phấn là tự thụ phấn: hạt ra giống hệt cây đó.\n" % Data.POLLINATE_COST) +
 		("    Cây được thụ phấn kết %d hạt lai, cứ %d phút một hạt. Có hạt thì cạnh chậu hiện ký hiệu hạt: chạm vào cây để thu.\n" % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)]) +
 		"    Túi đất: chọn chậu trống rồi bấm túi đất để cho loại đất tốt nhất bạn có.\n" +

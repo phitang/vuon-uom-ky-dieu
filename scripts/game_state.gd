@@ -581,15 +581,28 @@ func fertilize(pot_index: int) -> bool:
 	if p.is_empty() or p["chet"] or fertilizer <= 0:
 		return false
 	var s := stage_of(p)
-	if s >= 3:
-		message.emit("Cây đã ra hoa, không cần bón phân nữa.")
-		return false
 	if not p.get("da_tuoi", true):
 		message.emit("Hãy tưới nước trước để hạt bắt đầu nảy mầm.")
 		return false
-	var start: float = 0.0 if s == 0 else Data.STAGE_END[s - 1]
-	p["tien_do"] += (Data.STAGE_END[s] - start) * Data.FERTILIZER_BOOST
+	var hp: float = p.get("suc_khoe", 1.0)
+	var can_grow := s < 3
+	var can_heal := hp < 0.995
+	if not can_grow and not can_heal:
+		message.emit("Cây đang khỏe và đã ra hoa, không cần bón phân.")
+		return false
+	if can_grow:
+		var start: float = 0.0 if s == 0 else Data.STAGE_END[s - 1]
+		p["tien_do"] += (Data.STAGE_END[s] - start) * Data.FERTILIZER_BOOST
+	if can_heal:
+		p["suc_khoe"] = minf(1.0, hp + Data.FERTILIZER_HEAL)
+		p["heo"] = p["suc_khoe"] < Data.WILT_HEALTH
 	fertilizer -= 1
+	var parts: Array = []
+	if can_heal:
+		parts.append("sức khỏe %d%%" % int(round(p["suc_khoe"] * 100)))
+	if can_grow:
+		parts.append("cây lớn nhanh hơn")
+	message.emit("Đã bón phân: " + ", ".join(parts) + ".")
 	_check_discovery(p)
 	_changed()
 	return true

@@ -96,7 +96,8 @@ const YOUNG_SELL_MIN_STAGE := 1      # từ giai đoạn Cây non (hạt mới n
 const WATER_DRAIN_PER_SEC := 1.0 / 28800.0   # bình nước đầy cạn sau 8 giờ
 const MAX_OFFLINE := 7.0 * 24.0 * 3600.0       # tính tối đa 7 ngày vắng mặt
 const AUTO_WATER_DURATION := 24.0 * 3600.0
-const FERTILIZER_BOOST := 0.2                  # rút ngắn 20% giai đoạn hiện tại
+const FERTILIZER_BOOST := 0.2                  # rút ngắn 20% giai đoạn hiện tại (cây chưa ra hoa)
+const FERTILIZER_HEAL := 0.35                  # hồi 35% sức khỏe
 
 # ---------------- Đất và sức khỏe ----------------
 ## cap = độ tốt của đất. Mua một lần ở cửa hàng là dùng được mãi.
@@ -113,8 +114,9 @@ const SOIL_NEED := [0, 1, 2, 2]
 ## Hết nước: cây Thường mất hết sức khỏe trong 8 giờ; cây càng hiếm mất càng nhanh.
 const HEALTH_DRY_LOSS := 1.0 / (8.0 * 3600.0)
 const HEALTH_DRY_RARITY_MULT := [1.0, 1.5, 2.0, 2.5]
-## Đất kém hơn cây cần: thiếu 1 cấp mất hết sức khỏe trong 36 giờ, thiếu 2 cấp trong 16 giờ (kể cả khi đủ nước).
-const HEALTH_SOIL_LOSS := [0.0, 1.0 / (36.0 * 3600.0), 1.0 / (16.0 * 3600.0)]
+## Đất kém hơn cây cần: thiếu 1 cấp mất hết sức khỏe trong 10 giờ, thiếu 2 cấp trong 4 giờ (kể cả khi đủ nước).
+## (Trước đây là 36 giờ và 16 giờ.) Cây không tự hồi sức khỏe khi đất không hợp: phải bón phân.
+const HEALTH_SOIL_LOSS := [0.0, 1.0 / (10.0 * 3600.0), 1.0 / (4.0 * 3600.0)]
 ## Đủ nước và đất hợp: hồi đầy sức khỏe trong 12 giờ.
 const HEALTH_REGEN := 1.0 / (12.0 * 3600.0)
 const WILT_HEALTH := 0.5
@@ -141,7 +143,7 @@ const MILESTONE_COINS := 200
 
 const SHOP_ITEMS := [
 	{"id": "hat_thuong", "ten": "Gói hạt thường", "gia": 30, "mo_ta": "1 hạt giống ngẫu nhiên loại Thường", "cap": 1},
-	{"id": "phan_bon", "ten": "Phân bón", "gia": 25, "mo_ta": "Rút ngắn 20% giai đoạn hiện tại", "cap": 1},
+	{"id": "phan_bon", "ten": "Phân bón", "gia": 25, "mo_ta": "Hồi 35% sức khỏe, cây chưa ra hoa lớn nhanh hơn", "cap": 1},
 	{"id": "chau", "ten": "Chậu mới", "gia": 100, "mo_ta": "Thêm một chỗ trồng (giá tăng 50% mỗi lần)", "cap": 1},
 	{"id": "hat_bi_an", "ten": "Gói hạt bí ẩn", "gia": 150, "mo_ta": "Có cơ hội ra kiểu Hiếm và Quý", "cap": 2},
 	{"id": "tui_hat", "ten": "Túi hạt thêm", "gia": 1000, "mo_ta": "Thêm 8 ô chứa hạt (tối đa 6 túi)", "cap": 1},
