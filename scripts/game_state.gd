@@ -756,7 +756,10 @@ func market_price(p: Dictionary) -> int:
 	var s := stage_of(p)
 	var price := Data.BASE_PRICE
 	price *= Data.RARITY_PRICE_MULT[Gen.rarity(p["gen"])]
-	price *= Data.STAGE_PRICE_MULT[s]
+	if s < 3:   # chưa ra hoa: chỉ được một nửa giá cây đang ra hoa
+		price *= Data.STAGE_PRICE_MULT[3] * Data.YOUNG_SELL_RATIO
+	else:
+		price *= Data.STAGE_PRICE_MULT[s]
 	price *= 0.5 if p.get("heo", false) else 1.0
 	price *= 2.0 if is_hot(p["gen"]) else 1.0
 	var n := int(sold_today.get(Gen.variety_key(p["gen"]), 0))
@@ -766,7 +769,13 @@ func market_price(p: Dictionary) -> int:
 
 func can_sell(pot_index: int) -> bool:
 	var p: Dictionary = pots[pot_index]
-	return not p.is_empty() and not p["chet"] and stage_of(p) >= 2
+	return not p.is_empty() and not p["chet"] and stage_of(p) >= Data.YOUNG_SELL_MIN_STAGE
+
+
+## Cây đang phát triển, chưa ra hoa (bán chỉ được 50%).
+func is_young(pot_index: int) -> bool:
+	var p: Dictionary = pots[pot_index]
+	return not p.is_empty() and stage_of(p) < 3
 
 
 ## Giá người chơi đặt cho cây (phần trăm so với giá thị trường, mặc định 100%).
@@ -805,7 +814,7 @@ func set_display(pot_index: int, on: bool) -> bool:
 		return false
 	if on:
 		if not can_sell(pot_index):
-			message.emit("Chỉ trưng bày được cây từ giai đoạn Trưởng thành trở đi.")
+			message.emit("Hạt mới nảy mầm, chưa trưng bày được. Chờ cây lớn thêm nhé.")
 			return false
 		if has_pod(pot_index):
 			message.emit("Cây đang kết hạt lai. Thu đủ hạt rồi hãy trưng bày.")

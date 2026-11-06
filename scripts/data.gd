@@ -89,6 +89,9 @@ const RARITY_COLORS := [Color("9aa39a"), Color("4a9be8"), Color("b36be0"), Color
 const STAGE_NAMES := ["Hạt nảy mầm", "Cây non", "Trưởng thành", "Ra hoa", "Già, cho hạt"]
 const STAGE_END := [300.0, 2100.0, 9300.0, 23700.0, 110100.0]
 const STAGE_PRICE_MULT := [0.0, 0.0, 1.0, 1.5, 0.7]
+## Cây non / trưởng thành chưa ra hoa vẫn bán được nhưng chỉ được phần này giá cây đang ra hoa.
+const YOUNG_SELL_RATIO := 0.5
+const YOUNG_SELL_MIN_STAGE := 1      # từ giai đoạn Cây non (hạt mới nảy mầm thì chưa bán được)
 
 const WATER_DRAIN_PER_SEC := 1.0 / 28800.0   # bình nước đầy cạn sau 8 giờ
 const MAX_OFFLINE := 7.0 * 24.0 * 3600.0       # tính tối đa 7 ngày vắng mặt

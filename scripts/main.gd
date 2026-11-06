@@ -704,7 +704,7 @@ func _refresh_info() -> void:
 		traits_l.text += " · cây cần %s, sức khỏe đang giảm!" % Data.SOILS[gs.soil_needed(p)]["ten"].to_lower()
 	var shown: bool = p.get("trung_bay", false)
 	if gs.can_sell(selected):
-		price_btn.text = "Giá: %d xu%s  · sửa" % [gs.asking_price(p), " · HOT" if gs.is_hot(p["gen"]) else ""]
+		price_btn.text = "Giá: %d xu%s  · sửa" % [gs.asking_price(p), " · HOT" if gs.is_hot(p["gen"]) else (" · 50%" if gs.is_young(selected) else "")]
 		price_btn.disabled = false
 		sell_btn.disabled = false
 	else:
@@ -1012,6 +1012,16 @@ func _on_sell() -> void:
 	if gs.is_displayed(selected):
 		gs.set_display(selected, false)
 		_status("Đã thu cây về vườn.")
+	elif gs.is_young(selected):
+		# cây chưa ra hoa: hỏi trước vì chỉ bán được nửa giá
+		var pot := selected
+		_confirm("Cây chưa ra hoa",
+			"Cây giống đang phát triển, chưa có hoa. Nếu bán sẽ chỉ thu về 50%% xu (khoảng %d xu).\nBạn có đồng ý bán?" % gs.asking_price(gs.pots[pot]),
+			"Đồng ý", func():
+				if pot < gs.pots.size() and gs.can_sell(pot) and not gs.is_displayed(pot):
+					gs.set_display(pot, true)
+				_refresh_all(), "Từ chối", PRIMARY)
+		return
 	else:
 		gs.set_display(selected, true)
 	_refresh_all()
@@ -1109,17 +1119,17 @@ func _show_info(title: String, text: String) -> void:
 	box.add_child(_button("Đóng", _close_popup, PRIMARY))
 
 
-func _confirm(title: String, text: String, yes_text: String, on_yes: Callable) -> void:
+func _confirm(title: String, text: String, yes_text: String, on_yes: Callable, no_text := "Thôi", yes_color := DANGER) -> void:
 	var box := _open_popup(title, 620, 300)
 	box.add_child(_label(text))
 	var row := HBoxContainer.new()
 	box.add_child(row)
-	var no := _button("Thôi", _close_popup)
+	var no := _button(no_text, _close_popup)
 	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(no)
 	var yes := _button(yes_text, func():
 		_close_popup()
-		on_yes.call(), DANGER)
+		on_yes.call(), yes_color)
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(yes)
 
@@ -1176,6 +1186,7 @@ func _open_help() -> void:
 		"    Túi đất: chọn chậu trống rồi bấm túi đất để cho loại đất tốt nhất bạn có.\n" +
 		"• Thanh NƯỚC cạn thì cây ngừng lớn và mất SỨC KHỎE (cây càng hiếm mất càng nhanh); sức khỏe dưới một nửa là héo, hết là chết.\n" +
 		"• Bấm vào ô Giá để chỉnh giá cây. Bấm Trưng bày để đưa cây ra Shop cây cảnh.\n" +
+		"  Cây chưa ra hoa vẫn bán được nhưng chỉ thu về 50% xu (game sẽ hỏi lại trước khi đưa ra shop).\n" +
 		"• Trong Shop cây: khách vào xem các cây, ai ra đứng ở quầy thì trò chuyện mua cây; chọn cách trả lời khéo để khách mua.\n" +
 		"  Chạm vào cây trên gốc để chỉnh giá. Chạm nhà kính giữa sân (hoặc nút Về vườn): cây chưa bán trở lại chậu cũ.\n" +
 		"• Cây ra hoa lần đầu được ghi vào Sổ tay. Tìm đủ các giống hiếm và huyền thoại!", 21))
