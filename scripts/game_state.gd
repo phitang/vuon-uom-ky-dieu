@@ -1062,6 +1062,12 @@ func mark_hidden(kind: String) -> void:
 	_changed()
 
 
+## Thưởng xu (trả lời đúng câu đố của côn trùng...).
+func reward_coins(n: int) -> void:
+	coins += n
+	_changed()
+
+
 ## Đóng tiền bảo kê cho đàn anh. Trả về số xu đã trả (không để xu bị âm).
 func pay_protection() -> int:
 	var paid := mini(coins, Data.BAO_KE_FEE)

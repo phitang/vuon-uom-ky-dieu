@@ -21,6 +21,9 @@ const DragScroll := preload("res://scripts/drag_scroll.gd")
 const DecorPreview := preload("res://scripts/decor_preview.gd")
 const WaterAnim := preload("res://scripts/water_anim.gd")
 const ToolAnim := preload("res://scripts/tool_anim.gd")
+const Insects := preload("res://scripts/insects.gd")
+const Quiz := preload("res://scripts/quiz.gd")
+var insects: Control       # lớp côn trùng hỏi đáp bay trong nhà kính
 var tool_busy := false      # đang chạy hoạt ảnh xúc đất / cắt kéo
 const FONT_BOLD := preload("res://fonts/Lora-700.ttf")
 const FONT_MEDIUM := preload("res://fonts/Lora-500.ttf")
@@ -294,6 +297,16 @@ func _build_layout() -> void:
 		s.tapped.connect(_on_slot)
 		s.set_drag_forwarding(Callable(), func(_pos, data): return _can_drop_seed(i, data), func(_pos, data): _drop_seed(i, data))
 		slots.append(s)
+
+	# côn trùng hỏi đáp bay trong nhà kính (khoảng mỗi phút một con)
+	insects = Control.new()
+	insects.set_script(Insects)
+	insects.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	insects.offset_left = LEFT_W
+	insects.offset_bottom = -(BOTTOM_H + STATUS_H)
+	add_child(insects)
+	insects.paused_check = func(): return overlay.visible or nursery.visible
+	insects.insect_tapped.connect(_open_quiz)
 
 	_build_bottom()
 	_build_left()
@@ -1235,6 +1248,7 @@ func _open_help() -> void:
 		("    Cây được thụ phấn kết %d hạt lai, cứ %d phút một hạt. Có hạt thì cạnh chậu hiện ký hiệu hạt: chạm vào cây để thu.\n" % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)]) +
 		"    Túi đất: chọn chậu trống rồi bấm túi đất để cho loại đất tốt nhất bạn có.\n" +
 		"• Thanh NƯỚC cạn thì cây ngừng lớn và mất SỨC KHỎE (cây càng hiếm mất càng nhanh); sức khỏe dưới một nửa là héo, hết là chết.\n" +
+		"• Thỉnh thoảng có bướm, chuồn chuồn hoặc ong bay vào nhà kính. Chạm vào để nhận câu đố, trả lời đúng được 1 xu.\n" +
 		"• Bấm vào ô Giá để chỉnh giá cây. Bấm Trưng bày để đưa cây ra Shop cây cảnh.\n" +
 		"  Cây chưa ra hoa vẫn bán được nhưng chỉ thu về 50% xu (game sẽ hỏi lại trước khi đưa ra shop).\n" +
 		"• Trong Shop cây: khách vào xem các cây, ai ra đứng ở quầy thì trò chuyện mua cây; chọn cách trả lời khéo để khách mua.\n" +
@@ -1867,6 +1881,63 @@ func _refresh_shop() -> void:
 		shop_box.add_child(_label("Cấp vườn %d · Doanh thu %d xu. Đạt %d xu để lên cấp %d." % [lv, gs.revenue, Data.LEVEL_REVENUE[lv], lv + 1], 19, MUTED))
 	else:
 		shop_box.add_child(_label("Cấp vườn %d (cao nhất) · Doanh thu %d xu." % [lv, gs.revenue], 19, MUTED))
+
+
+# =====================================================================
+# Côn trùng đố vui
+# =====================================================================
+
+const QUIZ_TITLES := {"buom": "Bướm đố vui", "chuon": "Chuồn chuồn đố vui", "ong": "Ong đố vui"}
+
+
+func _open_quiz(kind: String, level: int) -> void:
+	var qz: Dictionary = Quiz.make(kind, level)
+	var box := _open_popup(QUIZ_TITLES.get(kind, "Đố vui"), 820, 500)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	box.add_child(head)
+	var pic := Insects.Bug.new()
+	pic.kind = kind
+	pic.level = level
+	pic.preview = true
+	pic.custom_minimum_size = Vector2(96, 96)
+	head.add_child(pic)
+	var ql := _label(qz["q"], 28, INK)
+	ql.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ql.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.add_child(ql)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	box.add_child(grid)
+	var result := _label("Trả lời đúng được 1 xu.", 22, MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var buttons: Array = []
+	var state := {"done": false}
+	for i in qz["options"].size():
+		var idx: int = i
+		var b := _button(str(qz["options"][i]), func():
+			if state["done"]:
+				return
+			state["done"] = true
+			var right: int = qz["answer"]
+			buttons[right].modulate = Color(0.65, 1.0, 0.6)
+			if idx == right:
+				gs.reward_coins(1)
+				result.text = "Chính xác! Bạn nhận được 1 xu."
+				result.add_theme_color_override("font_color", PRIMARY)
+				pic.level = level
+			else:
+				buttons[idx].modulate = Color(1.0, 0.55, 0.55)
+				result.text = "Chưa đúng rồi. Đáp án đúng: %s" % qz["options"][right]
+				result.add_theme_color_override("font_color", DANGER)
+			var go := _button("Tiếp tục", _close_popup, PRIMARY)
+			box.add_child(go))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(360, 60)
+		buttons.append(b)
+		grid.add_child(b)
+	box.add_child(result)
 
 
 # =====================================================================
