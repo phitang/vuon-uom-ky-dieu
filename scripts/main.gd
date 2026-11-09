@@ -1394,8 +1394,12 @@ func _open_chat(c: Dictionary) -> void:
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 4)
 	bubble.add_child(bv)
-	bv.add_child(_label("Đàn anh khu phố (ghé mua cây)" if cust.get("dan_anh", false) else Data.CUSTOMER_TYPES[cust["type"]]["ten"], 18, MUTED))
-	bv.add_child(_label("\"%s Tôi để ý cây %s này.\"" % [gs.wish_text(cust), Gen.variety_name(p["gen"])], 23))
+	bv.add_child(_label("Công tử ăn chơi (ghé mua cây)" if cust.get("cong_tu", false) else ("Đàn anh khu phố (ghé mua cây)" if cust.get("dan_anh", false) else Data.CUSTOMER_TYPES[cust["type"]]["ten"]), 18, MUTED))
+	if cust.get("cong_tu", false):
+		var loi_cong_tu: String = gs.wish_text(cust).replace("Tôi ", "Ta ").replace("tôi ", "ta ").replace("Chào chủ vườn!", "Này chủ vườn!")
+		bv.add_child(_label("\"%s Ta để ý cây %s này, hàng hiếm đấy!\"" % [loi_cong_tu, Gen.variety_name(p["gen"])], 23))
+	else:
+		bv.add_child(_label("\"%s Tôi để ý cây %s này.\"" % [gs.wish_text(cust), Gen.variety_name(p["gen"])], 23))
 
 	var lv: String = gs.chance_level(gs.buy_chance(p, price, cust, ""))
 	var mood := {"Thấp": -1, "Vừa": 0, "Cao": 1}[lv] as int
@@ -1403,6 +1407,19 @@ func _open_chat(c: Dictionary) -> void:
 	var walker = c.get("node")
 	cv.setup(cust["type"], mood, walker.variant if is_instance_valid(walker) else "")
 	cv.set_hd(true)
+	var chat_card := _card_tex(cv.variant)
+	if chat_card != null:
+		# thẻ chân dung giữ nguyên khung và nền, không tách nền (ví dụ công tử ăn chơi)
+		cv.visible = false
+		var card := TextureRect.new()
+		card.texture = chat_card
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.position = Vector2(4, 4)
+		card.size = Vector2(288, 442)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stage.add_child(card)
+		stage.move_child(card, cv.get_index())   # bảng giá vẫn nằm trên thẻ
 	var mood_text := {"Thấp": "Khách nhìn cây có vẻ lưỡng lự…", "Vừa": "Khách đang phân vân…", "Cao": "Khách nhìn cây đầy thích thú!"}
 	var mood_l := _label(mood_text[lv], 22, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	right.add_child(mood_l)

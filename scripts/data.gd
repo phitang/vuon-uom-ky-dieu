@@ -217,6 +217,11 @@ const VIP_LEGEND_WAIT := 300.0       # shop còn cây Huyền thoại quá 5 ph�
 # Đàn anh thỉnh thoảng vào như khách thường (tối đa một lần mỗi lần mở Shop cây), khó mua hơn.
 const DAN_ANH_SPAWN_CHANCE := 0.12   # khả năng mỗi khách mới là đàn anh
 const DAN_ANH_BUY_FACTOR := 0.55     # tỉ lệ mua chỉ bằng phần này so với khách thường
+# Công tử ghé như khách thường khi shop còn cây sau 7 phút (một lần mỗi lần mở Shop cây):
+# chỉ mua cây từ Hiếm trở lên, tỉ lệ mua gấp đôi khách thường.
+const VIP_GUEST_WAIT := 420.0
+const VIP_GUEST_BUY_FACTOR := 2.0
+const VIP_GUEST_MIN_RARITY := 1
 const DISCOUNT := 0.10
 
 ## Các loại khách. so_dac_diem = [ít nhất, nhiều nhất], mu_gia = độ nhạy giá.

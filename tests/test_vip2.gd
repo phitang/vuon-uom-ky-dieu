@@ -88,7 +88,57 @@ func _ready() -> void:
 	d["choice"] = nur._open_stands()[0]
 	main._open_chat(d)
 	await _shot(out + "/dan_anh_khach.png")
+	main._close_popup()
+	# công tử ghé như khách thường sau 7 phút còn cây
+	main._close_nursery()
+	_fill([0, 1, 0])
+	main._open_nursery()
+	await _run(410.0)
+	print("Sau 410 giây: có công tử khách = ", _guest() != null)
+	await _run(15.0)
+	var gc = _guest()
+	print("Sau 425 giây: có công tử khách = ", gc != null)
+	await _shot(out + "/cong_tu_khach_vao.png")
+	var rare_k := -1
+	for kk in nur._open_stands():
+		if Gen().rarity(gs.pots[nur.stands[kk]["pot"]]["gen"]) >= 1:
+			rare_k = kk
+	var picks := {}
+	for i in 30:
+		gc["seen"] = []
+		gc["choice"] = -1
+		nur.counter_claim = null
+		nur._decide(gc)
+		if gc["choice"] >= 0:
+			picks[gc["choice"]] = true
+	print("Công tử chỉ chọn kệ cây hiếm (", rare_k, "): ", picks.keys())
+	var gcust: Dictionary = gc["cust"]
+	var normal: Dictionary = gcust.duplicate()
+	normal.erase("cong_tu")
+	for kk in nur._open_stands():
+		var pp: Dictionary = gs.pots[nur.stands[kk]["pot"]]
+		print("  độ hiếm %d: khách thường %.2f, công tử %.2f" % [Gen().rarity(pp["gen"]), gs.buy_chance(pp, gs.asking_price(pp), normal, ""), gs.buy_chance(pp, gs.asking_price(pp), gcust, "")])
+	gc["choice"] = rare_k
+	main._open_chat(gc)
+	await _shot(out + "/cong_tu_khach_chat.png")
+	main._close_popup()
+	nur.counter_busy = false
+	for i in 5:
+		nur.seen_events.erase("cong_tu_khach")
+	main._close_nursery()
+	main._open_nursery()
+	await _run(300.0)
+	print("Mở shop lại, chưa đủ 7 phút: ", _guest() == null)
 	get_tree().quit()
+
+func Gen():
+	return load("res://scripts/genetics.gd")
+
+func _guest():
+	for c in nur.customers:
+		if c["cust"].get("cong_tu", false):
+			return c
+	return null
 
 func _fill(rar: Array) -> void:
 	gs.pots.clear()

@@ -1022,6 +1022,10 @@ func buy_chance(p: Dictionary, price: int, c: Dictionary, answer: String) -> flo
 	chance += minf(Data.APPEAL_BUY_MAX, Data.APPEAL_BUY * appeal())
 	if c.get("dan_anh", false):   # đàn anh khu phố ghé mua: khó tính hơn khách thường
 		chance *= Data.DAN_ANH_BUY_FACTOR
+	if c.get("cong_tu", false):   # công tử ghé mua: chỉ mua cây từ Hiếm trở lên, mua dễ gấp đôi
+		if Gen.rarity(p["gen"]) < Data.VIP_GUEST_MIN_RARITY:
+			return 0.0
+		chance *= Data.VIP_GUEST_BUY_FACTOR
 	return clamp(chance, 0.03, 0.95)
 
 

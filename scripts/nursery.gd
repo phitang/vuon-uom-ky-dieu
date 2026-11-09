@@ -55,6 +55,7 @@ var common_time := 0.0        # số giây shop toàn cây Thường
 var legend_time := 0.0        # số giây shop còn cây Huyền thoại
 var seen_events := {}         # các lần ghé đã xảy ra trong lần mở shop này: "khinh", "me", "dan_anh"
 var vip2_stand := -1          # kệ cây công tử muốn mua (kiểu "me")
+var stock_time := 0.0         # số giây shop còn cây để bán (công tử ghé như khách sau 7 phút)
 
 
 func _ready() -> void:
@@ -280,6 +281,7 @@ func _clear_customers() -> void:
 	empty_time = 0.0
 	common_time = 0.0
 	legend_time = 0.0
+	stock_time = 0.0
 	seen_events = {}
 
 
@@ -588,8 +590,11 @@ func _decide(c: Dictionary) -> void:
 		return
 	var best := -1
 	var best_score := -INF
+	var picky: bool = c["cust"].get("cong_tu", false)
 	for k in _open_stands():
 		var p: Dictionary = gs.pots[stands[k]["pot"]]
+		if picky and Gen.rarity(p["gen"]) < Data.VIP_GUEST_MIN_RARITY:
+			continue     # công tử chẳng thèm cây thường
 		var wish: Array = c["cust"]["wish"]
 		var score := float(Gen.count_matches(p["gen"], wish)) / wish.size()
 		score += 0.1 * Gen.rarity(p["gen"]) + randf() * 0.15
@@ -599,7 +604,7 @@ func _decide(c: Dictionary) -> void:
 			best_score = score
 			best = k
 	if best < 0:
-		_leave(c, "Thôi, lần sau vậy")
+		_leave(c, "Toàn hàng thường, chán!" if picky else "Thôi, lần sau vậy")
 		return
 	var p: Dictionary = gs.pots[stands[best]["pot"]]
 	var chance: float = gs.buy_chance(p, gs.asking_price(p), c["cust"], "")
@@ -674,6 +679,9 @@ func _update_events(delta: float) -> void:
 				for i in pots_open:
 					highest = maxi(highest, Gen.rarity(gs.pots[i]["gen"]))
 				var has_legend := highest >= 3
+				stock_time += delta
+				if stock_time >= Data.VIP_GUEST_WAIT and not seen_events.has("cong_tu_khach"):
+					_spawn_vip_guest()
 				# toàn bộ cây đang bán đều là cây Thường
 				common_time = common_time + delta if highest == 0 and not seen_events.has("khinh") else 0.0
 				legend_time = legend_time + delta if has_legend and not seen_events.has("me") else 0.0
@@ -783,6 +791,22 @@ func _start_vip2(kind: String) -> void:
 	node_say(v, "Ở đây có bán hoa à, để xem!" if kind == "khinh" else "Ồ… loài hoa này…")
 	set_status("Công tử ăn chơi ghé shop!")
 	_go_next_stand(v)
+
+
+## Công tử ghé như khách thường (một lần mỗi lần mở shop).
+func _spawn_vip_guest() -> void:
+	seen_events["cong_tu_khach"] = true
+	var had_dan_anh := seen_events.has("dan_anh")
+	_spawn_customer()
+	if not had_dan_anh:
+		seen_events.erase("dan_anh")   # lượt này là công tử, đàn anh vẫn còn cơ hội ghé
+	var c: Dictionary = customers.back()
+	c["cust"]["cong_tu"] = true
+	c["cust"].erase("dan_anh")
+	c["node"].setup(c["cust"]["type"], 0, "cong_tu")
+	c["speed"] = 0.85
+	node_say(c, "Để bản công tử xem nào!")
+	set_status("Công tử ăn chơi ghé xem cây!")
 
 
 ## Kệ có cây đắt nhất đang bày bán (-1 nếu không còn).
