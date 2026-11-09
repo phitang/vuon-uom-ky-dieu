@@ -1467,34 +1467,50 @@ func _special_layout(title: String, c: Dictionary, mood: int) -> Array:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	box.add_child(row)
-	var scene := PanelContainer.new()
-	var ssb := _box(Color("f6ead2"), 16)
-	ssb.border_color = Color("c9a46a")
-	ssb.set_border_width_all(3)
-	ssb.content_margin_left = 24
-	ssb.content_margin_right = 24
-	ssb.content_margin_top = 10
-	scene.add_theme_stylebox_override("panel", ssb)
-	row.add_child(scene)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 0)
-	scene.add_child(col)
 	var cv := Control.new()
 	cv.set_script(CustomerView)
-	cv.custom_minimum_size = Vector2(220, 400)
-	col.add_child(cv)
 	var walker = c.get("node")
 	cv.setup(c["cust"]["type"], mood, walker.variant if is_instance_valid(walker) else "")
+	# thẻ chân dung vẽ sẵn cả khung và nền (art/khach_that/<mã>_the.png), ví dụ công tử ăn chơi
+	var card_tex := _card_tex(cv.variant)
+	var card: TextureRect = null
+	if card_tex != null:
+		card = TextureRect.new()
+		card.texture = card_tex
+		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.custom_minimum_size = Vector2(300, 466)
+		row.add_child(card)
+	else:
+		var scene := PanelContainer.new()
+		var ssb := _box(Color("f6ead2"), 16)
+		ssb.border_color = Color("c9a46a")
+		ssb.set_border_width_all(3)
+		ssb.content_margin_left = 24
+		ssb.content_margin_right = 24
+		ssb.content_margin_top = 10
+		scene.add_theme_stylebox_override("panel", ssb)
+		row.add_child(scene)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		scene.add_child(col)
+		cv.custom_minimum_size = Vector2(220, 400)
+		col.add_child(cv)
+		var desk := ColorRect.new()
+		desk.color = Color("8a5a34")
+		desk.custom_minimum_size = Vector2(240, 40)
+		col.add_child(desk)
 	cv.set_hd(true)
-	var desk := ColorRect.new()
-	desk.color = Color("8a5a34")
-	desk.custom_minimum_size = Vector2(240, 40)
-	col.add_child(desk)
 	var right := VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 12)
 	row.add_child(right)
-	return [row, cv, right]
+	return [row, cv, right, card]
+
+
+func _card_tex(variant: String) -> Texture2D:
+	var path := "res://art/khach_that/%s_the.png" % variant
+	return load(path) if ResourceLoader.exists(path) else null
 
 
 func _speech(parent: Control, who: String, text: String) -> Label:
@@ -1548,6 +1564,7 @@ func _open_vip_chat(c: Dictionary) -> void:
 func _open_bao_ke(c: Dictionary) -> void:
 	var parts := _special_layout("Có biến ở quầy!", c, -1)
 	var cv: Control = parts[1]
+	rps_card = parts[3]
 	var right: VBoxContainer = parts[2]
 	var say := _speech(right, "Đàn anh khu phố",
 		"\"Có biết khu này của anh Phi ca không hả? Khôn hồn đóng tiền bảo kê, thuận anh Phi thì sống, nghịch anh Phi thì... cũng sống nhưng không thọ đâu!\"")
@@ -1581,6 +1598,9 @@ const RPS_BEATS := {"bua": "keo", "keo": "bao", "bao": "bua"}   # cái bên trá
 var rps := {}
 
 
+var rps_card: TextureRect = null   # thẻ chân dung của đàn anh (nếu có)
+
+
 func _rps_start(c: Dictionary, cv: Control, say: Label, info: Label, btns: VBoxContainer) -> void:
 	special_ctx["result"] = "danh"
 	_clear(btns)
@@ -1600,7 +1620,7 @@ func _rps_start(c: Dictionary, cv: Control, say: Label, info: Label, btns: VBoxC
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	btns.add_child(row)
-	rps = {"c": c, "cv": cv, "say": say, "info": info, "btns": btns, "row": row, "mine": mine, "theirs": theirs,
+	rps = {"card": rps_card, "c": c, "cv": cv, "say": say, "info": info, "btns": btns, "row": row, "mine": mine, "theirs": theirs,
 		"score": score, "round": 1, "win": 0, "lose": 0, "busy": false}
 	for k in ["bua", "keo", "bao"]:
 		var b := _button(RPS_NAMES[k], func(): _rps_pick(k), Color("6a4a8a"))
@@ -1710,6 +1730,9 @@ func _rps_end() -> void:
 			special_ctx["result"] = "danh_thang"
 			cv.setup("bao_ke", -1, "dan_anh_thuong")   # thâm mắt, bó bột tay, băng đầu
 			cv.set_hd(true)
+			var card = rps.get("card")
+			if card != null and is_instance_valid(card) and _card_tex("dan_anh_thuong") != null:
+				card.texture = _card_tex("dan_anh_thuong")
 			say.text = "\"Chờ đó, ta sẽ quay lại lợi hại hơn, đợi đi!\""
 			info.text = "Bạn thắng cả 3 ván! Đàn anh bầm dập, bó bột tay ôm đầu bỏ chạy."
 			info.add_theme_color_override("font_color", PRIMARY)

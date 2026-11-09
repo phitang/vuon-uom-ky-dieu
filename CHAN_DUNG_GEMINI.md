@@ -15,6 +15,8 @@ Khung trò chuyện ở quầy sẽ tự dùng ảnh chân dung thật nếu có
    Ảnh đã tách nền sẽ nằm trong `art/khach_that/`. Nếu không muốn tự chạy, gửi ảnh cho Claude để tách giúp.
 5. Mở Godot là game tự dùng ảnh mới. Xuất lại APK.
 
+**Thẻ chân dung có khung và nền** (như thẻ công tử ăn chơi): đặt ảnh tên `<mã>_the.png` thẳng vào `art/khach_that/`, **không tách nền**. Khung trò chuyện của khách đặc biệt (công tử, đàn anh) sẽ hiện nguyên thẻ đó. Đàn anh có thể có `dan_anh_the.png` và `dan_anh_thuong_the.png` (bản bị thương, tự đổi khi bạn thắng oẳn tù tì).
+
 Không bắt buộc: muốn nét mặt đổi theo độ hài lòng của khách, tạo thêm `<mã>_vui.png` (cười tươi) và `<mã>_buon.png` (lưỡng lự, hơi thất vọng) cho cùng nhân vật.
 
 ## Câu lệnh chung (dán trước mô tả từng nhân vật)
