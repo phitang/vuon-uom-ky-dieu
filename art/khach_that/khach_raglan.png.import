@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bat56rxre3km6"
-path="res://.godot/imported/cong_tu_the.png-58f486a9f4d4af400f578f9f5b7a4e21.ctex"
+uid="uid://dd8x6j41g7pbt"
+path="res://.godot/imported/khach_raglan.png-bbf315180ed9417a2226addde055d9b0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/khach_that_goc/cong_tu_the.png"
-dest_files=["res://.godot/imported/cong_tu_the.png-58f486a9f4d4af400f578f9f5b7a4e21.ctex"]
+source_file="res://art/khach_that/khach_raglan.png"
+dest_files=["res://.godot/imported/khach_raglan.png-bbf315180ed9417a2226addde055d9b0.ctex"]
 
 [params]
 

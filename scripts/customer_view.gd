@@ -181,6 +181,8 @@ func _draw() -> void:
 func _draw_real(tex: Texture2D) -> void:
 	var ts := tex.get_size()
 	var sc: float = minf(size.x / ts.x, size.y / ts.y)
+	if variant.begins_with("be_"):   # trẻ em đứng thấp hơn người lớn
+		sc *= 0.8
 	var dsz := ts * sc
 	var origin := Vector2((size.x - dsz.x) / 2.0, size.y - dsz.y)
 	var sh := PackedVector2Array()

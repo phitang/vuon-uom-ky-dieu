@@ -1,5 +1,7 @@
 # Tạo chân dung khách hàng bằng Gemini
 
+Đã có sẵn chân dung cho: khach_xanh (bản mẫu, đang cầm hộp quà), khach_den, khach_raglan, khach_vang, khach_hong, khach_do, khach_tim, be_trai, be_gai, dan_anh, dan_anh_thuong và thẻ cong_tu_the. Muốn đổi nhân vật nào thì làm theo các bước dưới.
+
 Khung trò chuyện ở quầy sẽ tự dùng ảnh chân dung thật nếu có file `art/khach_that/<mã>.png`. Chưa có thì game vẫn dùng hình khối như cũ.
 
 ## Cách làm
