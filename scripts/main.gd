@@ -1333,25 +1333,42 @@ func _open_chat(c: Dictionary) -> void:
 	ssb.content_margin_top = 10
 	scene.add_theme_stylebox_override("panel", ssb)
 	row.add_child(scene)
-	var srow := HBoxContainer.new()
-	srow.alignment = BoxContainer.ALIGNMENT_CENTER
-	scene.add_child(srow)
-	var cv := Control.new()
-	cv.set_script(CustomerView)
-	cv.custom_minimum_size = Vector2(200, 380)
-	srow.add_child(cv)
-	var counter := VBoxContainer.new()
-	counter.add_theme_constant_override("separation", 0)
-	counter.alignment = BoxContainer.ALIGNMENT_END
-	srow.add_child(counter)
-	var pv := _plant_view(Vector2(220, 300))
+	# sân khấu: khách đứng bên trái, chậu cây trên bàn gỗ bên phải, bảng giá góc trên
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(540, 450)
+	scene.add_child(stage)
+	var table := Control.new()
+	table.set_script(load("res://scripts/counter_table.gd"))
+	table.position = Vector2(296, 352)
+	table.size = Vector2(236, 98)
+	stage.add_child(table)
+	var pv := _plant_view(Vector2(226, 290))
+	pv.position = Vector2(301, 80)
 	pv.set_plant(p["gen"], gs.stage_of(p), false, p.get("heo", false))
 	pv.set_soil(gs.soils[pot])
-	counter.add_child(pv)
-	var desk := ColorRect.new()
-	desk.color = Color("8a5a34")
-	desk.custom_minimum_size = Vector2(240, 46)
-	counter.add_child(desk)
+	stage.add_child(pv)
+	var cv := Control.new()
+	cv.set_script(CustomerView)
+	cv.position = Vector2(0, 8)
+	cv.size = Vector2(300, 442)
+	stage.add_child(cv)
+	var tag := PanelContainer.new()
+	var tsb := _box(Color("fbf3e2"), 12)
+	tsb.border_color = Color("b98a4a")
+	tsb.set_border_width_all(2)
+	tsb.content_margin_left = 14
+	tsb.content_margin_right = 14
+	tsb.content_margin_top = 6
+	tsb.content_margin_bottom = 6
+	tsb.shadow_color = Color(0, 0, 0, 0.18)
+	tsb.shadow_size = 4
+	tsb.shadow_offset = Vector2(0, 2)
+	tag.add_theme_stylebox_override("panel", tsb)
+	var tag_l := _label("%s - Giá: %d xu" % [Gen.variety_name(p["gen"]), price], 18, INK, HORIZONTAL_ALIGNMENT_CENTER)
+	tag_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tag.add_child(tag_l)
+	stage.add_child(tag)
+	tag.position = Vector2(312, 14)
 
 	var right := VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL

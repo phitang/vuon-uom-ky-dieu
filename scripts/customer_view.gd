@@ -53,7 +53,11 @@ func setup(p_type: String, p_mood: int, p_variant := "") -> void:
 
 func set_hd(on: bool) -> void:
 	hd = on
-	if on:
+	if on and _real(variant, mood) != null:
+		# có chân dung thật (ảnh vẽ chi tiết): vẽ mượt, không cần ánh sáng khối
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		material = null
+	elif on:
 		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		var mat := ShaderMaterial.new()
 		mat.shader = PORTRAIT_SHADER
@@ -76,6 +80,23 @@ static func _sheet(id: String) -> Texture2D:
 	return _tex[id]
 
 
+## Chân dung thật: art/khach_that/<mã>.png, có thể thêm <mã>_vui.png / <mã>_buon.png theo nét mặt.
+static func _real(id: String, p_mood: int) -> Texture2D:
+	var names := [id]
+	if p_mood > 0:
+		names.push_front(id + "_vui")
+	elif p_mood < 0:
+		names.push_front(id + "_buon")
+	for n in names:
+		var key: String = "that:" + n
+		if not _tex.has(key):
+			var path := "res://art/khach_that/%s.png" % n
+			_tex[key] = load(path) if ResourceLoader.exists(path) else null
+		if _tex[key] != null:
+			return _tex[key]
+	return null
+
+
 static func _hd_sheet(id: String) -> Texture2D:
 	var key := "hd:" + id
 	if not _tex.has(key):
@@ -95,6 +116,11 @@ func _frame_index() -> int:
 
 
 func _draw() -> void:
+	if hd and not walking:
+		var real := _real(variant, mood)
+		if real != null:
+			_draw_real(real)
+			return
 	var use_hd := hd and not walking and _hd_sheet(variant) != null
 	var tex := _hd_sheet(variant) if use_hd else _sheet(variant)
 	if tex == null:
@@ -149,3 +175,20 @@ func _draw() -> void:
 			var tip := PackedVector2Array([Vector2(cx - 5, r.end.y), Vector2(cx + 5, r.end.y), Vector2(cx, r.end.y + 7)])
 			draw_colored_polygon(tip, Color(1, 1, 1, 0.95))
 		draw_string(font, Vector2(r.position.x + 8, r.position.y + 19), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3a2614"))
+
+
+## Vẽ chân dung thật vừa khung, đứng sát đáy, có bóng dưới chân.
+func _draw_real(tex: Texture2D) -> void:
+	var ts := tex.get_size()
+	var sc: float = minf(size.x / ts.x, size.y / ts.y)
+	var dsz := ts * sc
+	var origin := Vector2((size.x - dsz.x) / 2.0, size.y - dsz.y)
+	var sh := PackedVector2Array()
+	for i in 20:
+		var t := TAU * i / 20.0
+		sh.append(Vector2(size.x / 2.0 + cos(t) * dsz.x * 0.36, size.y - 4 + sin(t) * 7))
+	draw_colored_polygon(sh, Color(0, 0, 0, 0.18))
+	if facing < 0:
+		draw_set_transform(Vector2(size.x, 0), 0.0, Vector2(-1, 1))
+	draw_texture_rect(tex, Rect2(origin, dsz), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
