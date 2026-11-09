@@ -1020,7 +1020,9 @@ func buy_chance(p: Dictionary, price: int, c: Dictionary, answer: String) -> flo
 				chance += 0.15
 	# shop càng đẹp khách càng dễ mua
 	chance += minf(Data.APPEAL_BUY_MAX, Data.APPEAL_BUY * appeal())
-	return clamp(chance, 0.05, 0.95)
+	if c.get("dan_anh", false):   # đàn anh khu phố ghé mua: khó tính hơn khách thường
+		chance *= Data.DAN_ANH_BUY_FACTOR
+	return clamp(chance, 0.03, 0.95)
 
 
 ## Khách mua cây ở chậu pot_index với giá price.

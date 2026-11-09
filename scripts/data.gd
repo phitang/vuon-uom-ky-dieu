@@ -211,6 +211,12 @@ const BAO_KE_WAIT := 120.0           # giây (2 phút)
 const BAO_KE_FIGHT_COST := [0, 10, 20, 50]
 const RPS_ROUNDS := 3
 const BAO_KE_FEE := 100              # tiền bảo kê khi chọn "Đóng tiền bảo kê"
+# Công tử ghé thêm (mỗi lần mở Shop cây tối đa một lần mỗi kiểu):
+const VIP_COMMON_WAIT := 180.0       # shop toàn cây Thường quá 3 phút chưa bán hết: công tử vào chê rồi đi
+const VIP_LEGEND_WAIT := 300.0       # shop còn cây Huyền thoại quá 5 phút: công tử hỏi mua cây đắt nhất
+# Đàn anh thỉnh thoảng vào như khách thường (tối đa một lần mỗi lần mở Shop cây), khó mua hơn.
+const DAN_ANH_SPAWN_CHANCE := 0.12   # khả năng mỗi khách mới là đàn anh
+const DAN_ANH_BUY_FACTOR := 0.55     # tỉ lệ mua chỉ bằng phần này so với khách thường
 const DISCOUNT := 0.10
 
 ## Các loại khách. so_dac_diem = [ít nhất, nhiều nhất], mu_gia = độ nhạy giá.

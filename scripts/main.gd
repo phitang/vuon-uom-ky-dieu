@@ -1368,7 +1368,13 @@ func _open_chat(c: Dictionary) -> void:
 	tag_l.autowrap_mode = TextServer.AUTOWRAP_OFF
 	tag.add_child(tag_l)
 	stage.add_child(tag)
-	tag.position = Vector2(312, 14)
+	# bảng giá bám mép phải, tên cây dài thì giãn sang trái
+	tag.anchor_left = 1.0
+	tag.anchor_right = 1.0
+	tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	tag.offset_right = -12
+	tag.offset_left = -12
+	tag.offset_top = 14
 
 	var right := VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1388,7 +1394,7 @@ func _open_chat(c: Dictionary) -> void:
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 4)
 	bubble.add_child(bv)
-	bv.add_child(_label(Data.CUSTOMER_TYPES[cust["type"]]["ten"], 18, MUTED))
+	bv.add_child(_label("Đàn anh khu phố (ghé mua cây)" if cust.get("dan_anh", false) else Data.CUSTOMER_TYPES[cust["type"]]["ten"], 18, MUTED))
 	bv.add_child(_label("\"%s Tôi để ý cây %s này.\"" % [gs.wish_text(cust), Gen.variety_name(p["gen"])], 23))
 
 	var lv: String = gs.chance_level(gs.buy_chance(p, price, cust, ""))
@@ -1456,8 +1462,55 @@ func _chat_answer(kind: String, cv: Control, mood_l: Label, answers: VBoxContain
 func _open_special(c: Dictionary) -> void:
 	if c["role"] == "vip":
 		_open_vip_chat(c)
+	elif c["role"] == "vip2":
+		_open_vip2_chat(c)
 	else:
 		_open_bao_ke(c)
+
+
+## Công tử ghé một mình: chê hoa tầm thường, hoặc hỏi mua cây đắt nhất vì nhớ mẹ.
+func _open_vip2_chat(c: Dictionary) -> void:
+	var khinh: bool = nursery.event_kind == "khinh"
+	var k: int = -1 if khinh else nursery.priciest_stand()
+	var parts := _special_layout("Khách đặc biệt ở quầy", c, -1 if khinh else 0)
+	var right: VBoxContainer = parts[2]
+	var btns := VBoxContainer.new()
+	btns.add_theme_constant_override("separation", 8)
+	if khinh or k < 0:
+		special_ctx["result"] = "khinh"
+		_speech(right, "Công tử ăn chơi", "\"Các loài hoa ở đây thật tầm thường, thật không xứng để bản công tử chạm vào!\"")
+		right.add_child(_label("Công tử phẩy tay, chẳng thèm nhìn cây nào thêm.", 22, TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+		right.add_child(btns)
+		btns.add_child(_button("Tiếp tục", _close_popup, PRIMARY))
+		return
+	var pot: int = nursery.stands[k]["pot"]
+	var p: Dictionary = gs.pots[pot]
+	var price: int = gs.asking_price(p)
+	_speech(right, "Công tử ăn chơi", "\"Trước kia mẹ ta cũng trồng loài hoa này, ngươi có thể bán cho ta không!\"")
+	var info_row := HBoxContainer.new()
+	info_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	info_row.add_theme_constant_override("separation", 12)
+	right.add_child(info_row)
+	var pv := _plant_view(Vector2(120, 150))
+	pv.set_plant(p["gen"], gs.stage_of(p), false, p.get("heo", false))
+	pv.set_soil(gs.soils[pot])
+	info_row.add_child(pv)
+	var info := _label("Công tử muốn mua cây %s · giá %d xu" % [Gen.variety_name(p["gen"]), price], 22, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	info_row.add_child(info)
+	right.add_child(btns)
+	var yes := _button("Có", func():
+		var got: int = nursery.vip2_buy(c, k)
+		special_ctx["result"] = "mua" if got > 0 else "khong"
+		info.text = ("Công tử trân trọng nhận cây và trả bạn %d xu." % got) if got > 0 else "Cây này vừa bán mất rồi…"
+		info.add_theme_color_override("font_color", PRIMARY)
+		_clear(btns)
+		btns.add_child(_button("Tiếp tục", _close_popup, PRIMARY)), PRIMARY)
+	btns.add_child(yes)
+	btns.add_child(_button("Không", func():
+		special_ctx["result"] = "khong"
+		_close_popup()))
 
 
 ## Khung bên trái: chân dung khách đứng trước quầy. Trả về [hàng ngang, nhân vật, cột phải].

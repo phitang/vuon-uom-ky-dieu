@@ -51,6 +51,10 @@ var event_kind := ""          # "quy" hoặc "huyen_thoai"
 var event_timer := 0.0
 var event_hint := false
 var empty_time := 0.0         # số giây shop không còn cây nào để bán
+var common_time := 0.0        # số giây shop toàn cây Thường
+var legend_time := 0.0        # số giây shop còn cây Huyền thoại
+var seen_events := {}         # các lần ghé đã xảy ra trong lần mở shop này: "khinh", "me", "dan_anh"
+var vip2_stand := -1          # kệ cây công tử muốn mua (kiểu "me")
 
 
 func _ready() -> void:
@@ -274,6 +278,9 @@ func _clear_customers() -> void:
 	event = ""
 	event_phase = ""
 	empty_time = 0.0
+	common_time = 0.0
+	legend_time = 0.0
+	seen_events = {}
 
 
 func _add_stand(k: int, pot: int) -> void:
@@ -382,7 +389,7 @@ func _process(delta: float) -> void:
 		var browsing := event == "vip" and event_phase == "browse"
 		if browsing:
 			spawn_timer = minf(spawn_timer, 1.6)   # công tử sắp tới: shop đông khách xem
-		if (event == "" or browsing) and customers.size() < Data.MAX_SHOP_CUSTOMERS and not _open_stands().is_empty():
+		if (event == "" or event == "vip2" or browsing) and customers.size() < Data.MAX_SHOP_CUSTOMERS and not _open_stands().is_empty():
 			_spawn_customer()
 	for c in customers.duplicate():
 		_update_customer(c, delta)
@@ -395,7 +402,13 @@ func _spawn_customer() -> void:
 	node.size = CUST_SIZE
 	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(node)
-	node.setup(cust["type"], 0)
+	if not seen_events.has("dan_anh") and randf() < Data.DAN_ANH_SPAWN_CHANCE:
+		# đàn anh khu phố ghé như khách thường
+		seen_events["dan_anh"] = true
+		cust["dan_anh"] = true
+		node.setup(cust["type"], 0, "dan_anh")
+	else:
+		node.setup(cust["type"], 0)
 	var c := {"node": node, "cust": cust, "state": "walk", "path": [], "goal": "", "timer": 0.0,
 		"visits": randi_range(2, 4), "seen": [], "choice": -1, "pos": _gate() + Vector2(0, -30), "role": ""}
 	customers.append(c)
@@ -476,7 +489,7 @@ func _update_customer(c: Dictionary, delta: float) -> void:
 				node.queue_redraw()
 				_go_next_stand(c)
 		"queue":
-			if event == "" and not counter_busy and counter_claim == null:
+			if (event == "" or event == "vip2") and not counter_busy and counter_claim == null:
 				counter_claim = c
 				_walk_to(c, _counter_spot(), "counter")
 		"leave_wait":
@@ -500,8 +513,11 @@ func _arrive(c: Dictionary) -> void:
 			var k: int = c.get("stand", -1)
 			if k >= 0:
 				node.facing = signf(stands[k]["pos"].x - c["pos"].x)
-			if c["role"] == "vip":
-				node.bubble = ["Hàng xịn đấy!", "Đẹp, đẹp lắm!", "Xứng tầm anh!"].pick_random()
+			if c["role"] in ["vip", "vip2"]:
+				var lines := ["Hàng xịn đấy!", "Đẹp, đẹp lắm!", "Xứng tầm anh!"]
+				if c["role"] == "vip2":
+					lines = ["Tầm thường!", "Hừm… chán.", "Cũng thường thôi."] if event_kind == "khinh" else ["Hoa này…", "Giống hoa của mẹ…", "Đẹp quá…"]
+				node.bubble = lines.pick_random()
 				node.set_mood(1)
 				c["timer"] = 1.8
 				node.queue_redraw()
@@ -517,11 +533,11 @@ func _arrive(c: Dictionary) -> void:
 			if counter_busy:
 				c["state"] = "queue"
 				return
-			if c["role"] in ["vip", "bao_ke"]:
+			if c["role"] in ["vip", "vip2", "bao_ke"]:
 				counter_busy = true
 				node.facing = -1.0
 				c["state"] = "chat"
-				node.bubble = "Gói hết cho anh!" if c["role"] == "vip" else "Chủ quán đâu!"
+				node.bubble = {"vip": "Gói hết cho anh!", "vip2": "Chủ quán!", "bao_ke": "Chủ quán đâu!"}[c["role"]]
 				node.queue_redraw()
 				special_requested.emit(c)
 				return
@@ -551,7 +567,12 @@ func _arrive(c: Dictionary) -> void:
 
 ## Sau khi xem đủ: chọn cây thích nhất rồi ra quầy, hoặc bỏ về.
 func _decide(c: Dictionary) -> void:
-	if c["role"] == "vip":
+	if c["role"] == "vip2" and (counter_busy or counter_claim != null):
+		c["state"] = "look"      # quầy đang bận: đứng xem thêm chút
+		c["timer"] = 1.5
+		c["visits"] = 1
+		return
+	if c["role"] in ["vip", "vip2"]:
 		counter_claim = c
 		node_say(c, "Ra quầy tính tiền!")
 		_walk_to(c, _counter_spot(), "counter")
@@ -648,16 +669,31 @@ func _update_events(delta: float) -> void:
 						_start_bao_ke()
 			else:
 				empty_time = 0.0
+				var pots_open: Array = open.map(func(k): return stands[k]["pot"])
+				var highest := 0
+				for i in pots_open:
+					highest = maxi(highest, Gen.rarity(gs.pots[i]["gen"]))
+				var has_legend := highest >= 3
+				# toàn bộ cây đang bán đều là cây Thường
+				common_time = common_time + delta if highest == 0 and not seen_events.has("khinh") else 0.0
+				legend_time = legend_time + delta if has_legend and not seen_events.has("me") else 0.0
 				if not counter_busy and counter_claim == null:
-					var kind: String = gs.vip_kind(open.map(func(k): return stands[k]["pot"]))
+					var kind: String = gs.vip_kind(pots_open)
 					if kind != "":
 						_start_vip(kind)
+					elif common_time >= Data.VIP_COMMON_WAIT:
+						_start_vip2("khinh")
+					elif legend_time >= Data.VIP_LEGEND_WAIT:
+						_start_vip2("me")
 		"vip":
 			_update_vip(delta)
 		"bao_ke":
 			if _role_count("bao_ke") == 0:
 				event = ""
 				empty_time = 0.0
+		"vip2":
+			if _role_count("vip2") == 0:
+				event = ""
 
 
 func _start_vip(kind: String) -> void:
@@ -733,6 +769,49 @@ func _vip_enter() -> void:
 	_go_next_stand(v)
 
 
+## Công tử ghé một mình (không vệ sĩ, không đuổi khách):
+##   "khinh": shop toàn cây Thường -> chê rồi đi;  "me": shop có cây Huyền thoại -> hỏi mua cây đắt nhất.
+func _start_vip2(kind: String) -> void:
+	event = "vip2"
+	event_kind = kind
+	seen_events[kind] = true
+	common_time = 0.0
+	legend_time = 0.0
+	var v := _spawn_special("cong_tu", "vip2", _gate() + Vector2(0, -30))
+	v["visits"] = mini(2, _open_stands().size())
+	v["speed"] = 0.85
+	node_say(v, "Ở đây có bán hoa à, để xem!" if kind == "khinh" else "Ồ… loài hoa này…")
+	set_status("Công tử ăn chơi ghé shop!")
+	_go_next_stand(v)
+
+
+## Kệ có cây đắt nhất đang bày bán (-1 nếu không còn).
+func priciest_stand() -> int:
+	var best := -1
+	var best_price := -1
+	for k in _open_stands():
+		var price: int = gs.asking_price(gs.pots[stands[k]["pot"]])
+		if price > best_price:
+			best_price = price
+			best = k
+	return best
+
+
+## Công tử mua một cây ở kệ k theo giá đã đặt. Trả về giá bán (0 nếu không bán được).
+func vip2_buy(c: Dictionary, k: int) -> int:
+	if k < 0 or k >= stands.size() or c.get("paid", false):
+		return 0
+	var pot: int = stands[k]["pot"]
+	if pot < 0 or pot >= gs.pots.size() or gs.pots[pot].is_empty() or stands[k].get("sold", 0) > 0:
+		return 0
+	var price: int = gs.asking_price(gs.pots[pot])
+	gs.complete_sale(pot, price)
+	stands[k]["sold"] = price
+	c["paid"] = true
+	refresh()
+	return price
+
+
 func _start_bao_ke() -> void:
 	event = "bao_ke"
 	empty_time = 0.0
@@ -770,6 +849,21 @@ func vip_sell_all(c: Dictionary) -> Array:
 func special_finished(c: Dictionary, result: String) -> void:
 	counter_busy = false
 	var node: Control = c["node"]
+	if c["role"] == "vip2":
+		match result:
+			"mua":
+				_leave(c, "Cảm ơn ngươi!")
+				node.set_mood(1)
+				set_status("Công tử đã mua cây hoa đắt nhất shop của bạn!")
+			"khong":
+				_leave(c, "Tiếc thật…")
+				set_status("Công tử buồn bã rời đi.")
+			_:
+				_leave(c, "Hừ, phí thời gian!")
+				set_status("Công tử chê hoa tầm thường rồi bỏ đi.")
+		node.queue_redraw()
+		refresh()
+		return
 	if c["role"] == "vip":
 		vip_sell_all(c)
 		_leave(c, "Hẹn gặp lại cưng!")
