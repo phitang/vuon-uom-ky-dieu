@@ -11,6 +11,7 @@ var dim := false
 var highlight := false
 var locked := false  # vẽ ổ khóa (chưa mua)
 var loaded := false  # súng thụ phấn đã nạp phấn
+var tier := 0        # bình tưới: 1 xanh, 2 vàng; súng thụ phấn: 2 vàng
 var t := 0.0
 
 
@@ -55,7 +56,9 @@ func _al(col: Color, a: float) -> Color:
 
 
 func _can(c: Vector2, s: float, a: float) -> void:
-	var body := Color("3f9a5a")
+	var body: Color = [Color("3f9a5a"), Color("3a78d8"), Color("e0aa22")][clampi(tier, 0, 2)]
+	if tier == 2:   # bình vàng lấp lánh
+		draw_circle(c + Vector2(-4, 4) * s, 22 * s, _al(Color(1, 0.85, 0.3, 0.18), a))
 	draw_rect(Rect2(c + Vector2(-14, -8) * s, Vector2(26, 24) * s), _al(body, a))
 	draw_arc(c + Vector2(-1, -8) * s, 10 * s, PI, TAU, 12, _al(body.darkened(0.2), a), 4 * s)
 	draw_line(c + Vector2(12, 4) * s, c + Vector2(26, -12) * s, _al(body, a), 5 * s)
@@ -96,8 +99,8 @@ func _brush(c: Vector2, s: float, a: float) -> void:
 func _gun(c: Vector2, s: float, a: float) -> void:
 	var o := c + Vector2(-2, 2) * s
 	var P := func(x: float, y: float) -> Vector2: return o + Vector2(x, y) * s
-	var body := Color("2f9a8a")
-	var dark := Color("1e6a60")
+	var body := Color("2f9a8a") if tier < 2 else Color("d9a826")
+	var dark := Color("1e6a60") if tier < 2 else Color("9a7414")
 	# tay cầm
 	draw_colored_polygon(PackedVector2Array([P.call(-15, 2), P.call(-4, 2), P.call(-8, 22), P.call(-20, 22)]), _al(Color("8a5a2b"), a))
 	draw_colored_polygon(PackedVector2Array([P.call(-15, 2), P.call(-11, 2), P.call(-16, 22), P.call(-20, 22)]), _al(Color("a8743a"), a))

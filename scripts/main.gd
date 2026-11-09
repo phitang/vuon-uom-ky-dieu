@@ -370,10 +370,17 @@ func _build_bottom() -> void:
 	add_child(bar)
 	var row := HBoxContainer.new()
 	bar.add_child(row)
-	for spec in [["Menu", _open_menu], ["Vật tư", _open_shop], ["Sổ tay", _open_book], ["Shop cây", _open_nursery]]:
+	for spec in [["Menu", _open_menu], ["Vật tư", _open_shop], ["Sổ tay", _open_book], ["Shop cây", _open_nursery], ["Kho hạt", _open_storage]]:
 		var b := _button(spec[0], spec[1])
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(b)
+		if spec[0] == "Kho hạt":
+			# kéo hạt từ túi thả vào nút này để cất vào kho
+			b.set_drag_forwarding(Callable(),
+				func(_pos, data): return typeof(data) == TYPE_DICTIONARY and data.has("hat"),
+				func(_pos, data):
+					if gs.store_seed(int(data["hat"])):
+						_status("Đã cất hạt vào kho (%d/%d)." % [gs.storage.size(), gs.storage_cap]))
 	page_prev = _button("«", func(): _change_page(-1))
 	page_prev.custom_minimum_size.x = 64
 	row.add_child(page_prev)
@@ -591,6 +598,9 @@ func _pages() -> int:
 func _refresh_shelves() -> void:
 	shelf_page = clampi(shelf_page, 0, _pages() - 1)
 	page_l.text = "Kệ %d/%d" % [shelf_page + 1, _pages()]
+	# vườn tối đa 15 chậu = 1 kệ; nút chuyển kệ chỉ hiện với file lưu cũ còn hơn 15 chậu
+	for nd in [page_prev, page_l, page_next]:
+		nd.visible = _pages() > 1
 	page_prev.disabled = shelf_page == 0
 	page_next.disabled = shelf_page >= _pages() - 1
 	for k in SLOTS_PER_PAGE:
@@ -650,6 +660,8 @@ func _refresh_tools() -> void:
 	tool_icons["phan"].dim = not alive or gs.fertilizer <= 0 or (st >= 3 and float(p.get("suc_khoe", 1.0)) >= 0.995)
 	tool_icons["keo"].dim = not alive or st < 4
 	tool_icons["sung"].loaded = not pollen_gen.is_empty()
+	tool_icons["sung"].tier = 2 if gs.gold_gun else 0
+	tool_icons["nuoc"].tier = gs.can_tier
 	tool_icons["sung"].highlight = not pollen_gen.is_empty()
 	var best: String = gs.best_soil()
 	tool_icons["dat"].kind = "dat_" + best      # hình túi đổi theo loại đất tốt nhất đã mua
@@ -878,6 +890,9 @@ func _use_tool(kind: String) -> void:
 			_status("Đã bỏ phấn trong súng.")
 		_refresh_all()
 		return
+	if kind == "nuoc" and gs.can_tier > 0:
+		_water_upgraded()
+		return
 	var p := _sel_plant()
 	if p.is_empty() or p["chet"]:
 		_status("Hãy chọn một cây còn sống trước khi dùng dụng cụ.")
@@ -913,6 +928,26 @@ func _use_tool(kind: String) -> void:
 				if not ok:
 					gs.harvest_seeds(pot)
 					selected = -1
+	_refresh_all()
+
+
+## Bình xanh tưới cả hàng của chậu đang chọn, bình vàng tưới cả vườn.
+func _water_upgraded() -> void:
+	if gs.can_tier == 1 and selected < 0:
+		_status("Chọn một chậu trong hàng muốn tưới, rồi bấm bình tưới.")
+		return
+	var targets: Array = gs.water_targets(maxi(selected, 0))
+	var n: int = gs.water_many(targets)
+	var order := 0
+	for i in targets:
+		var p: Dictionary = gs.pots[i]
+		if not p.is_empty() and not p["chet"] and not p.get("trung_bay", false):
+			_play_water(i, order * 0.12)
+			order += 1
+	if n == 0:
+		_status("Không có cây nào để tưới.")
+	else:
+		_status("Đã tưới %d cây%s." % [n, " trong hàng" if gs.can_tier == 1 else " trong vườn"])
 	_refresh_all()
 
 
@@ -968,7 +1003,7 @@ func _play_tool(mode: String, i: int, on_done: Callable) -> bool:
 
 
 ## Hoạt ảnh bình tưới trên chậu i (nếu chậu đang hiện trên kệ).
-func _play_water(i: int) -> void:
+func _play_water(i: int, delay := 0.0) -> void:
 	var k := i - shelf_page * SLOTS_PER_PAGE
 	if k < 0 or k >= SLOTS_PER_PAGE:
 		return
@@ -977,6 +1012,8 @@ func _play_water(i: int) -> void:
 	anim.set_script(WaterAnim)
 	anim.target = Vector2(r.get_center().x, r.end.y - (r.size.y - 2.0) * 0.40)
 	anim.scale_k = clampf(r.size.y / 115.0, 0.8, 1.6)
+	anim.tint = [Color(0.25, 0.62, 0.36), Color(0.23, 0.47, 0.85), Color(0.88, 0.67, 0.13)][clampi(gs.can_tier, 0, 2)]
+	anim.delay = delay
 	anim.z_index = 50
 	add_child(anim)
 	move_child(anim, nursery.get_index())   # nằm dưới Shop cây và bảng bật lên
@@ -1002,6 +1039,7 @@ func _gun_drag_data(b: Control):
 	ic.size = Vector2(84, 84)
 	ic.position = Vector2(-42, -56)
 	ic.loaded = not pollen_gen.is_empty()
+	ic.tier = 2 if gs.gold_gun else 0
 	holder.add_child(ic)
 	b.set_drag_preview(holder)
 	tool_icons["sung"].modulate.a = 0.0    # súng đang trên tay
@@ -1127,7 +1165,7 @@ func _close_nursery() -> void:
 # =====================================================================
 
 ## Mở một bảng bật lên. tap_outside_closes: chạm vào vùng tối bên ngoài để đóng.
-func _open_popup(title: String, width := 760, height := 560, tap_outside_closes := true) -> VBoxContainer:
+func _open_popup(title: String, width := 760, height := 560, tap_outside_closes := true, scrollable := true) -> VBoxContainer:
 	_close_popup()
 	overlay.visible = true
 	var dim := ColorRect.new()
@@ -1146,14 +1184,17 @@ func _open_popup(title: String, width := 760, height := 560, tap_outside_closes 
 	panel.offset_top = -height / 2.0
 	panel.offset_bottom = height / 2.0
 	overlay.add_child(panel)
-	var scroll := ScrollContainer.new()
-	scroll.set_script(DragScroll)   # vuốt bằng ngón tay để cuộn
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(box)
+	if scrollable:
+		var scroll := ScrollContainer.new()
+		scroll.set_script(DragScroll)   # vuốt bằng ngón tay để cuộn
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		panel.add_child(scroll)
+		scroll.add_child(box)
+	else:
+		panel.add_child(box)   # bảng kéo thả (kho hạt): không cuộn để kéo hạt không bị nhầm thành cuộn
 	box.add_child(_label(title, 28, Color("7a4a1a")))
 	return box
 
@@ -1247,6 +1288,8 @@ func _open_help() -> void:
 		("    Súng thụ phấn: kéo súng thả vào cây đang ra hoa để nạp phấn (cây đang kết hạt vẫn cho phấn), rồi kéo tới cây ra hoa khác để lai (%d xu).\n    Thả lại vào chính cây vừa lấy phấn là tự thụ phấn: hạt ra giống hệt cây đó.\n" % Data.POLLINATE_COST) +
 		("    Cây được thụ phấn kết %d hạt lai, cứ %d phút một hạt. Có hạt thì cạnh chậu hiện ký hiệu hạt: chạm vào cây để thu.\n" % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)]) +
 		"    Túi đất: chọn chậu trống rồi bấm túi đất để cho loại đất tốt nhất bạn có.\n" +
+		"    Bình tưới xanh tưới cả hàng cây, bình tưới vàng tưới cả vườn. Súng thụ phấn vàng giúp hạt lai hiếm hơn và dễ ra giống mới.\n" +
+		"• Vườn có tối đa 15 chậu. Bấm Kho hạt để cất bớt hạt: kéo hạt giữa túi và kho (hoặc kéo hạt từ túi thả vào nút Kho hạt).\n" +
 		"• Thanh NƯỚC cạn thì cây ngừng lớn và mất SỨC KHỎE (cây càng hiếm mất càng nhanh); sức khỏe dưới một nửa là héo, hết là chết.\n" +
 		"• Thỉnh thoảng có bướm, chuồn chuồn hoặc ong bay vào nhà kính. Chạm vào để nhận câu đố, trả lời đúng được 1 xu.\n" +
 		"• Bấm vào ô Giá để chỉnh giá cây. Bấm Trưng bày để đưa cây ra Shop cây cảnh.\n" +
@@ -1909,7 +1952,7 @@ func _open_shop() -> void:
 func _refresh_shop() -> void:
 	if shop_box == null or not is_instance_valid(shop_box):
 		return
-	var sig := "%d|%d|%d|%d|%d|%d|%s|%d" % [gs.coins, gs.garden_level(), gs.pots.size(), gs.seeds.size(), gs.fertilizer, 0, gs.soils_owned.keys(), gs.seed_bags]
+	var sig := "%d|%d|%d|%d|%d|%d|%s|%d|%d|%s|%d" % [gs.coins, gs.garden_level(), gs.pots.size(), gs.seeds.size(), gs.fertilizer, 0, gs.soils_owned.keys(), gs.seed_bags, gs.can_tier, gs.gold_gun, gs.storage_cap]
 	if sig == shop_sig:
 		return
 	shop_sig = sig
@@ -1924,7 +1967,9 @@ func _refresh_shop() -> void:
 	var grid := GridContainer.new()
 	grid.columns = 2
 	shop_box.add_child(grid)
-	var icons := {"hat_thuong": "hat", "hat_bi_an": "hat", "phan_bon": "phan", "binh_tuoi": "tu_dong", "chau": "", "dat_tot": "dat_tot", "dat_hiem": "dat_hiem", "tui_hat": "hat"}
+	var icons := {"hat_thuong": "hat", "hat_bi_an": "hat", "phan_bon": "phan", "binh_tuoi": "tu_dong", "chau": "", "dat_tot": "dat_tot", "dat_hiem": "dat_hiem", "tui_hat": "hat",
+		"binh_xanh": "nuoc", "binh_vang": "nuoc", "sung_vang": "sung", "mo_kho": "hat"}
+	var tiers := {"binh_xanh": 1, "binh_vang": 2, "sung_vang": 2}
 	for it in Data.SHOP_ITEMS:
 		var panel := PanelContainer.new()
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1936,7 +1981,9 @@ func _refresh_shop() -> void:
 		ic_box.custom_minimum_size = Vector2(56, 56)
 		row.add_child(ic_box)
 		if icons.get(it["id"], "") != "":
-			ic_box.add_child(_icon(icons[it["id"]], Vector2(56, 56)))
+			var ic := _icon(icons[it["id"]], Vector2(56, 56))
+			ic.tier = tiers.get(it["id"], 0)
+			ic_box.add_child(ic)
 		else:
 			var pv := _plant_view(Vector2(56, 56))
 			pv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1959,6 +2006,15 @@ func _refresh_shop() -> void:
 		elif id == "tui_hat" and gs.seed_bags >= Data.MAX_SEED_BAGS:
 			b.disabled = true
 			b.text = "Đủ túi"
+		elif (id == "binh_xanh" and gs.can_tier >= 1) or (id == "binh_vang" and gs.can_tier >= 2) or (id == "sung_vang" and gs.gold_gun):
+			b.disabled = true
+			b.text = "Đã có"
+		elif id == "mo_kho" and gs.storage_cap >= Data.STORAGE_MAX:
+			b.disabled = true
+			b.text = "Tối đa"
+		elif id == "chau" and gs.pots.size() >= Data.MAX_POTS:
+			b.disabled = true
+			b.text = "Đủ chậu"
 		elif (id == "dat_tot" and gs.soils_owned.get("tot", false)) or (id == "dat_hiem" and gs.soils_owned.get("hiem", false)):
 			b.disabled = true
 			b.text = "Đã có"
@@ -2048,6 +2104,126 @@ func _open_quiz(kind: String, level: int) -> void:
 		buttons.append(b)
 		grid.add_child(b)
 	box.add_child(result)
+
+
+# =====================================================================
+# Kho hạt
+# =====================================================================
+
+const BAG_PAGE := 16
+const STORE_PAGE := 20
+var kho_page := {"tui": 0, "kho": 0}
+
+
+func _open_storage() -> void:
+	var box := _open_popup("Kho hạt", 1100, 620, true, false)
+	box.add_child(_label("Kéo hạt từ túi sang kho để cất, kéo từ kho về túi để lấy ra. Chạm một hạt cũng chuyển được.", 18, MUTED))
+	var holder := HBoxContainer.new()
+	holder.add_theme_constant_override("separation", 18)
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(holder)
+	box.add_child(_button("Đóng", _close_popup, PRIMARY))
+	var refresh := func(): _refresh_storage(holder)
+	popup_refresh = refresh
+	refresh.call()
+
+
+func _kind_of(gen: Dictionary) -> Dictionary:
+	return {"hoa": Gen.expressed(gen, "hoa"), "hiem": Gen.rarity(gen)}
+
+
+func _refresh_storage(holder: HBoxContainer) -> void:
+	if not is_instance_valid(holder):
+		return
+	_clear(holder)
+	holder.add_child(_storage_side("tui", "Túi hạt", gs.seeds, gs.seed_capacity(), BAG_PAGE, 4, holder))
+	holder.add_child(_storage_side("kho", "Kho hạt", gs.storage, gs.storage_cap, STORE_PAGE, 5, holder))
+
+
+## Một bên của bảng kho: lưới ô hạt có chia trang; ô nhận hạt kéo từ bên kia.
+func _storage_side(side: String, title: String, list: Array, cap: int, per_page: int, cols: int, holder: HBoxContainer) -> Control:
+	var other := "kho" if side == "tui" else "tui"
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _framed(Color("f6ead2"), Color("c9a46a"), 12, 2))
+	var accept := func(data) -> bool:
+		return typeof(data) == TYPE_DICTIONARY and data.get("kho_tu", "") == other
+	var do_drop := func(data) -> void:
+		var ok: bool = gs.store_seed(int(data["idx"])) if side == "kho" else gs.take_seed(int(data["idx"]))
+		if ok:
+			selected_seed = mini(selected_seed, maxi(0, gs.seeds.size() - 1))
+	panel.set_drag_forwarding(Callable(), func(_p, d): return accept.call(d), func(_p, d): do_drop.call(d))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	panel.add_child(v)
+	var pages := maxi(1, ceili(float(cap) / per_page))
+	kho_page[side] = clampi(kho_page[side], 0, pages - 1)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var tl := _label("%s  %d/%d" % [title, list.size(), cap], 22, INK)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(tl)
+	if pages > 1:
+		var prev := _button("«", func():
+			kho_page[side] = maxi(0, kho_page[side] - 1)
+			_refresh_storage.call_deferred(holder))
+		prev.custom_minimum_size = Vector2(52, 44)
+		prev.disabled = kho_page[side] == 0
+		head.add_child(prev)
+		var pl := _label("%d/%d" % [kho_page[side] + 1, pages], 18, MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		pl.custom_minimum_size.x = 50
+		pl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		head.add_child(pl)
+		var nxt := _button("»", func():
+			kho_page[side] = mini(pages - 1, kho_page[side] + 1)
+			_refresh_storage.call_deferred(holder))
+		nxt.custom_minimum_size = Vector2(52, 44)
+		nxt.disabled = kho_page[side] >= pages - 1
+		head.add_child(nxt)
+	var grid := GridContainer.new()
+	grid.columns = cols
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
+	var start: int = kho_page[side] * per_page
+	for n in per_page:
+		var i: int = start + n
+		if i >= cap:
+			break
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(80, 80)
+		b.focus_mode = Control.FOCUS_NONE
+		var st := UiSkin.inset_box(Color("5a3a22"), Vector4(4, 4, 4, 4))
+		for k in ["normal", "hover", "pressed", "disabled"]:
+			b.add_theme_stylebox_override(k, st)
+		grid.add_child(b)
+		if i < list.size():
+			var ic := SeedBag.SeedPreview.new()
+			ic.kind = _kind_of(list[i]["gen"])
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			b.add_child(ic)
+			var idx := i
+			b.pressed.connect(func():   # chạm: chuyển sang bên kia
+				if side == "tui":
+					gs.store_seed(idx)
+				else:
+					gs.take_seed(idx)
+				selected_seed = mini(selected_seed, maxi(0, gs.seeds.size() - 1)))
+			b.set_drag_forwarding(func(_pos):
+					var pv := SeedBag.SeedPreview.new()
+					pv.kind = _kind_of(list[idx]["gen"])
+					pv.size = Vector2(72, 72)
+					pv.position = Vector2(-36, -36)
+					var hold := Control.new()
+					hold.add_child(pv)
+					b.set_drag_preview(hold)
+					return {"kho_tu": side, "idx": idx},
+				func(_p, d): return accept.call(d),
+				func(_p, d): do_drop.call(d))
+		else:
+			b.set_drag_forwarding(Callable(), func(_p, d): return accept.call(d), func(_p, d): do_drop.call(d))
+	return panel
 
 
 # =====================================================================

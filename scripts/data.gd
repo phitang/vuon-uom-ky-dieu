@@ -125,7 +125,8 @@ const WILT_HEALTH := 0.5
 const BASE_PRICE := 20.0
 const START_COINS := 200
 const START_POTS := 3
-const MAX_POTS := 24
+const MAX_POTS := 15               # vừa một kệ (3 hàng x 5 chậu)
+const ROW_SIZE := 5                # số chậu mỗi hàng (bình tưới xanh tưới cả hàng)
 const POLLINATE_COST := 20
 const SEEDS_PER_BAG := 8       # mỗi túi hạt chứa 8 hạt
 const MAX_SEED_BAGS := 6
@@ -149,7 +150,18 @@ const SHOP_ITEMS := [
 	{"id": "tui_hat", "ten": "Túi hạt thêm", "gia": 1000, "mo_ta": "Thêm 8 ô chứa hạt (tối đa 6 túi)", "cap": 1},
 	{"id": "dat_tot", "ten": "Đất tốt", "gia": 50000, "mo_ta": "Mua một lần, dùng mãi. Hợp cây Hiếm", "cap": 1},
 	{"id": "dat_hiem", "ten": "Đất hiếm", "gia": 200000, "mo_ta": "Mua một lần, dùng mãi. Hợp cây Quý và Huyền thoại", "cap": 1},
+	{"id": "binh_xanh", "ten": "Bình tưới xanh", "gia": 10000, "mo_ta": "Một lần tưới cả hàng cây (5 chậu)", "cap": 1},
+	{"id": "binh_vang", "ten": "Bình tưới vàng", "gia": 50000, "mo_ta": "Một lần tưới tất cả cây trong vườn", "cap": 1},
+	{"id": "sung_vang", "ten": "Súng thụ phấn vàng", "gia": 30000, "mo_ta": "Lai hai giống dễ ra hạt hiếm hơn 1 bậc và giống mới chưa có trong Sổ tay", "cap": 1},
+	{"id": "mo_kho", "ten": "Mở rộng kho hạt", "gia": 2000, "mo_ta": "Thêm 20 ô trong kho hạt (giá tăng mỗi lần)", "cap": 1},
 ]
+
+# ---------------- Kho hạt và dụng cụ nâng cấp ----------------
+const STORAGE_BASE := 20             # số ô kho hạt ban đầu
+const STORAGE_STEP := 20             # mỗi lần mở rộng
+const STORAGE_MAX := 100
+const GOLD_GUN_UP_CHANCE := 0.4      # súng vàng: khả năng hạt lai được nâng hiếm thêm 1 bậc
+const GOLD_GUN_NEW_CHANCE := 0.4     # súng vàng: khả năng ưu tiên ra giống chưa có trong Sổ tay
 
 # ---------------- Bán hàng ----------------
 const PRICE_MIN_PCT := 50

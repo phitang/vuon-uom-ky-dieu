@@ -6,6 +6,8 @@ const DURATION := 1.7
 
 var target := Vector2.ZERO
 var scale_k := 1.0
+var tint := Color(0.25, 0.62, 0.36)   # màu bình: xanh lá (thường), xanh dương, vàng
+var delay := 0.0                       # chờ trước khi hiện (tưới nhiều chậu thì hiện so le)
 var _t := 0.0
 var _drops: Array = []     # mỗi giọt: [vị trí, vận tốc, tuổi]
 var _splash: Array = []
@@ -17,6 +19,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if delay > 0.0:
+		delay -= delta
+		return
 	_t += delta
 	var tilt := _tilt()
 	# vòi đổ nước khi bình nghiêng đủ
@@ -96,9 +101,12 @@ func _draw() -> void:
 		draw_colored_polygon(pts, Color(0.15, 0.25, 0.4, 0.25 * wet))
 	# bình tưới
 	draw_set_transform(_can_pos(), _can_rot(), Vector2(scale_k, scale_k))
-	var body := Color(0.25, 0.62, 0.36, a)
-	var dark := Color(0.17, 0.45, 0.26, a)
-	var light := Color(0.5, 0.82, 0.55, a)
+	if delay > 0.0:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	var body := Color(tint.r, tint.g, tint.b, a)
+	var dark := Color(tint.darkened(0.3).r, tint.darkened(0.3).g, tint.darkened(0.3).b, a)
+	var light := Color(tint.lightened(0.35).r, tint.lightened(0.35).g, tint.lightened(0.35).b, a)
 	# bóng thân
 	draw_rect(Rect2(-24, -18, 40, 36), body)
 	draw_rect(Rect2(-24, -18, 8, 36), light)

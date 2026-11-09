@@ -25,6 +25,10 @@ var shop_name := ""       # tên trên bảng hiệu Shop cây
 var shop_upgrades := {}   # "bang_hieu"/"quay"/"hang_rao" -> bậc đã mua
 var decor_owned := {}     # mã đồ trang trí -> true
 var hidden_met := {}      # khách ẩn đã gặp: "quy", "huyen_thoai" -> true
+var can_tier := 0         # bình tưới: 0 thường, 1 xanh (cả hàng), 2 vàng (cả vườn)
+var gold_gun := false     # súng thụ phấn vàng
+var storage: Array = []   # kho hạt (cùng dạng với seeds)
+var storage_cap := Data.STORAGE_BASE
 var fertilizer := 0
 var auto_waterers := 0
 var pots_bought := 0
@@ -87,6 +91,10 @@ func new_game() -> void:
 	shop_upgrades = {}
 	decor_owned = {}
 	hidden_met = {}
+	can_tier = 0
+	gold_gun = false
+	storage = []
+	storage_cap = Data.STORAGE_BASE
 	for i in 2:
 		seeds.append({"gen": Gen.random_genome(0), "bo_me": []})
 	fertilizer = 1
@@ -114,6 +122,10 @@ func save_game() -> void:
 		"nang_cap_shop": shop_upgrades,
 		"trang_tri": decor_owned.keys(),
 		"khach_an": hidden_met.keys(),
+		"binh": can_tier,
+		"sung_vang": gold_gun,
+		"kho_hat": storage,
+		"kho_cap": storage_cap,
 		"phan_bon": fertilizer,
 		"binh_tuoi": auto_waterers,
 		"chau_da_mua": pots_bought,
@@ -188,6 +200,17 @@ func load_game() -> bool:
 	hidden_met = {}
 	for id in data.get("khach_an", []):
 		hidden_met[str(id)] = true
+	can_tier = clampi(int(data.get("binh", 0)), 0, 2)
+	gold_gun = bool(data.get("sung_vang", false))
+	storage_cap = clampi(int(data.get("kho_cap", Data.STORAGE_BASE)), Data.STORAGE_BASE, Data.STORAGE_MAX)
+	storage = []
+	for sd in data.get("kho_hat", []):
+		if typeof(sd) == TYPE_DICTIONARY and _valid_gen(sd.get("gen")):
+			storage.append({"gen": sd["gen"], "bo_me": sd.get("bo_me", [])})
+	# vườn nay tối đa 15 chậu: bỏ bớt chậu trống thừa ở cuối (chậu đang có cây thì giữ)
+	while pots.size() > Data.MAX_POTS and pots.back().is_empty():
+		pots.pop_back()
+		soils.pop_back()
 	# file lưu cũ có nhiều hạt hơn sức chứa: cho đủ túi
 	seed_bags = maxi(seed_bags, ceili(float(seeds.size()) / Data.SEEDS_PER_BAG))
 	return true
@@ -576,6 +599,57 @@ func water(pot_index: int) -> void:
 	_changed()
 
 
+## Tưới nhiều chậu cùng lúc (bình xanh / bình vàng). Trả về số cây được tưới.
+func water_many(indices: Array) -> int:
+	var n := 0
+	for i in indices:
+		var p: Dictionary = pots[i]
+		if p.is_empty() or p["chet"] or p.get("trung_bay", false):
+			continue
+		p["nuoc"] = 1.0
+		p["da_tuoi"] = true
+		n += 1
+	_changed()
+	return n
+
+
+## Các chậu bình tưới hiện tại sẽ tưới khi chọn chậu i.
+func water_targets(i: int) -> Array:
+	match can_tier:
+		2:
+			return range(pots.size())
+		1:
+			var row_start := (i / Data.ROW_SIZE) * Data.ROW_SIZE
+			return range(row_start, mini(row_start + Data.ROW_SIZE, pots.size()))
+	return [i]
+
+
+# ================== Kho hạt ==================
+
+func store_seed(i: int) -> bool:
+	if i < 0 or i >= seeds.size():
+		return false
+	if storage.size() >= storage_cap:
+		message.emit("Kho hạt đã đầy (%d ô). Mở rộng kho ở mục Vật tư." % storage_cap)
+		return false
+	storage.append(seeds[i])
+	seeds.remove_at(i)
+	_changed()
+	return true
+
+
+func take_seed(j: int) -> bool:
+	if j < 0 or j >= storage.size():
+		return false
+	if seed_room() <= 0:
+		message.emit("Túi hạt đã đầy, không lấy thêm được.")
+		return false
+	seeds.append(storage[j])
+	storage.remove_at(j)
+	_changed()
+	return true
+
+
 func fertilize(pot_index: int) -> bool:
 	var p: Dictionary = pots[pot_index]
 	if p.is_empty() or p["chet"] or fertilizer <= 0:
@@ -702,7 +776,13 @@ func pollinate(j: int, father_gen: Dictionary, selfing := false) -> bool:
 	var b: Dictionary = pots[j]
 	b["da_lai"] = true
 	# một lần lai chỉ tạo một bộ gen: mọi hạt của lần lai này giống hệt nhau
-	var child: Dictionary = b["gen"].duplicate(true) if selfing else Gen.cross(b["gen"], father_gen, cross_mutation(b["gen"], father_gen))
+	var child: Dictionary
+	if selfing:
+		child = b["gen"].duplicate(true)
+	elif gold_gun:
+		child = _gold_child(b["gen"], father_gen)
+	else:
+		child = Gen.cross(b["gen"], father_gen, cross_mutation(b["gen"], father_gen))
 	b["qua"] = {"bo": father_gen.duplicate(true), "bo_me": [Gen.variety_key(b["gen"]), Gen.variety_key(father_gen)],
 		"t": 0.0, "con": Data.SEEDS_PER_CROSS, "san": 0, "gen_con": child}
 	if selfing:
@@ -711,6 +791,36 @@ func pollinate(j: int, father_gen: Dictionary, selfing := false) -> bool:
 		message.emit("Thụ phấn thành công! Cây sẽ kết %d hạt, cứ %d phút một hạt." % [Data.SEEDS_PER_CROSS, int(Data.SEED_POD_INTERVAL / 60.0)])
 	_changed()
 	return true
+
+
+## Súng vàng: hạt lai có cơ hội hiếm hơn 1 bậc, và được ưu tiên ra giống chưa có trong Sổ tay.
+func _gold_child(mother: Dictionary, father: Dictionary) -> Dictionary:
+	var m := cross_mutation(mother, father)
+	var result := Gen.cross(mother, father, m)
+	var pool: Array = [result]
+	for k in 24:
+		pool.append(Gen.cross(mother, father, m))
+	if randf() < Data.GOLD_GUN_UP_CHANCE:
+		var want := mini(3, Gen.rarity(result) + 1)   # đúng 1 bậc, không nhảy cóc
+		var found := false
+		for g in pool:
+			if Gen.rarity(g) == want:
+				result = g
+				found = true
+				break
+		var tries := 0
+		while not found and tries < 400:   # thêm đột biến cho đến khi lên được đúng 1 bậc
+			tries += 1
+			var g := Gen.cross(mother, father, minf(1.0, m + 0.3))
+			if Gen.rarity(g) == want:
+				result = g
+				found = true
+	if randf() < Data.GOLD_GUN_NEW_CHANCE and collection.has(Gen.variety_key(result)):
+		for g in pool:
+			if Gen.rarity(g) >= Gen.rarity(result) and not collection.has(Gen.variety_key(g)):
+				result = g
+				break
+	return result
 
 
 ## Loại đất tốt nhất đã mua (túi đất luôn dùng loại này).
@@ -861,6 +971,8 @@ func pot_price() -> int:
 func item_price(id: String) -> int:
 	if id == "chau":
 		return pot_price()
+	if id == "mo_kho":
+		return 2000 * (1 + (storage_cap - Data.STORAGE_BASE) / Data.STORAGE_STEP)
 	for it in Data.SHOP_ITEMS:
 		if it["id"] == id:
 			return it["gia"]
@@ -898,6 +1010,25 @@ func buy(id: String) -> bool:
 			pots.append({})
 			soils.append("")
 			pots_bought += 1
+		"binh_xanh", "binh_vang":
+			var tier := 1 if id == "binh_xanh" else 2
+			if can_tier >= tier:
+				message.emit("Bạn đã có bình tưới này (hoặc tốt hơn) rồi.")
+				return false
+			can_tier = tier
+			message.emit("Đã có %s!" % ("bình tưới xanh: một lần tưới cả hàng cây" if tier == 1 else "bình tưới vàng: một lần tưới cả vườn"))
+		"sung_vang":
+			if gold_gun:
+				message.emit("Bạn đã có súng thụ phấn vàng rồi.")
+				return false
+			gold_gun = true
+			message.emit("Đã có súng thụ phấn vàng!")
+		"mo_kho":
+			if storage_cap >= Data.STORAGE_MAX:
+				message.emit("Kho hạt đã mở rộng tối đa.")
+				return false
+			storage_cap += Data.STORAGE_STEP
+			message.emit("Kho hạt có thêm %d ô (tổng %d ô)." % [Data.STORAGE_STEP, storage_cap])
 		"dat_tot", "dat_hiem":
 			var t := "tot" if id == "dat_tot" else "hiem"
 			if soils_owned.get(t, false):

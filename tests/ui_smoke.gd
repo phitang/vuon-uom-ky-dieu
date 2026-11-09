@@ -160,13 +160,12 @@ func _ready() -> void:
 	main._use_tool("keo")
 	print("Thu hạt: ", s0, " -> ", gs.seeds.size())
 
-	# nhiều chậu -> sang kệ 2
-	gs.coins = 100000
-	for i in 14:
+	# mua chậu: tối đa 15, không còn kệ 2
+	gs.coins = 1000000
+	for i in 20:
 		gs.buy("chau")
 	main._refresh_all()
-	main._change_page(1)
-	print("Kệ: ", main.page_l.text, " chậu=", gs.pots.size())
+	print("Chậu tối đa: ", gs.pots.size(), " | nút kệ hiện = ", main.page_l.visible)
 
 	# thùng rác
 	main._change_page(-1)
