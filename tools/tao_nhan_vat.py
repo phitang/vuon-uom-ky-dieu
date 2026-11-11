@@ -32,8 +32,10 @@ SKINS = {
 
 CHARACTERS = {
     # id: tóc, màu tóc, da, áo, quần/váy, giày, kiểu áo, kiểu dưới, phụ kiện
-    "ban_hang": dict(hair="ngan", hair_c="7a4a24", skin="sang", top="f4f1ea", bottom="2f4a7a",
-                     shoes="5a3a22", top_style="thun", bottom_style="quan", apron="3e8a4a"),
+    # cô bán hoa (giống icon game): tóc dài nâu, nón rơm nơ đỏ, áo xanh lá, tạp dề be, ôm bó hoa
+    "ban_hang": dict(hair="dai", hair_c="8a4a26", skin="sang", top="4f9a48", bottom="7a5a3e",
+                     shoes="6a4028", top_style="thun", bottom_style="vay", apron="e8d6ae",
+                     straps=True, hat="rom", bouquet=True),
     "khach_hong": dict(hair="dai", hair_c="6b3f22", skin="sang", top="d052a8", bottom="d052a8",
                        shoes="7a3a5a", top_style="dai_tay", bottom_style="quan", belt="f6c15c"),
     "khach_xanh": dict(hair="ngan", hair_c="2a1e18", skin="ngam", top="3a78d8", bottom="9a8a60",
@@ -157,6 +159,9 @@ def draw_character(cfg, frame):
         ap = hexc(cfg["apron"])
         s.rect(11, torso_top + 4 + oy, 20, leg_top + 6 + oy, ap)
         s.rect(13, torso_top + 9 + oy, 18, torso_top + 12 + oy, shade(ap, 0.8), shaded=False)
+        if cfg.get("straps"):             # dây đeo tạp dề qua vai
+            s.rect(11, torso_top - 1 + oy, 12, torso_top + 3 + oy, shade(ap, 0.85), shaded=False)
+            s.rect(19, torso_top - 1 + oy, 20, torso_top + 3 + oy, shade(ap, 0.85), shaded=False)
     # cổ áo
     s.rect(14, torso_top + oy, 17, torso_top + 1 + oy, skin, shaded=False)
     t0 = torso_top + oy
@@ -341,6 +346,34 @@ def draw_character(cfg, frame):
         s.put(20, ey + 2, (30, 30, 34, 255))
         for k in range(3, 8):
             s.put(20, ey + k, (190, 196, 210, 255))
+
+    if cfg.get("hat") == "rom":           # nón rơm vành rộng, dải ruy băng đỏ, nơ bên trái
+        straw = hexc("dcb46c")
+        dark = shade(straw, 0.78)
+        red = hexc("d8342c")
+        s.rect(12, hy - 3, 19, hy - 2, straw, shaded=False)          # chóp nón
+        s.rect(13, max(hy - 4, 1), 18, max(hy - 4, 1), straw, shaded=False)
+        s.rect(11, hy - 1, 20, hy, red, shaded=False)                # ruy băng
+        s.rect(5, hy + 1, 26, hy + 2, straw, shaded=False)           # vành nón
+        s.rect(7, hy + 3, 24, hy + 3, dark, shaded=False)
+        for x in range(6, 26, 3):                                    # vân rơm
+            s.put(x, hy + 1, dark)
+        for x in range(13, 19, 2):
+            s.put(x, hy - 3, dark)
+        s.put(14, hy - 3, shade(straw, 1.15))
+        s.rect(8, hy - 2, 10, hy, red, shaded=False)                 # nơ
+        s.put(9, hy - 1, shade(red, 0.7))
+        s.put(7, hy + 1, red); s.put(8, hy + 2, red)
+    if cfg.get("bouquet"):                # bó hoa ôm bên tay phải
+        y0 = torso_top + oy + 8
+        stem = hexc("4a8a3a")
+        s.rect(21, y0 + 3, 23, y0 + 9, stem, shaded=False)
+        s.rect(20, y0 + 4, 24, y0 + 5, hexc("f3ead2"), shaded=False)   # giấy gói
+        for (dx, dy, c) in ((19, -1, "e8609a"), (22, -2, "f2c232"), (25, -1, "a46ad8"),
+                            (20, 2, "f2c232"), (23, 1, "e8609a"), (26, 2, "e8609a")):
+            s.rect(dx, y0 + dy, dx + 1, y0 + dy + 1, hexc(c), shaded=False)
+            s.put(dx, y0 + dy, shade(hexc(c), 1.2))
+        s.put(18, y0 + 1, hexc("5aa04a")); s.put(27, y0 + 1, hexc("5aa04a"))
 
     s.outline()
     return s.img
