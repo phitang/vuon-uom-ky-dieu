@@ -88,6 +88,7 @@ var status_tween: Tween
 
 # Bảng bật lên
 var overlay: Control
+var title_screen: Control  # màn hình chính khi vào game
 var popup_refresh: Callable = Callable()
 var shop_box: VBoxContainer
 var shop_sig := ""
@@ -104,9 +105,7 @@ func _ready() -> void:
 	_refresh_all()
 	_music("vuon")
 	_status("Chạm vào một chậu trên kệ để chọn cây.")
-	if gs.away_report != "":
-		_show_info("Trong lúc bạn vắng mặt", gs.away_report)
-		gs.away_report = ""
+	_build_title()
 
 
 func _notification(what: int) -> void:
@@ -124,6 +123,9 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if overlay.visible:
 			_close_popup()
+		elif title_screen != null and title_screen.visible:
+			gs.save_game()
+			get_tree().quit()
 		elif nursery.visible:
 			_close_nursery()
 		elif not pollen_gen.is_empty():
@@ -305,7 +307,7 @@ func _build_layout() -> void:
 	insects.offset_left = LEFT_W
 	insects.offset_bottom = -(BOTTOM_H + STATUS_H)
 	add_child(insects)
-	insects.paused_check = func(): return overlay.visible or nursery.visible
+	insects.paused_check = func(): return overlay.visible or nursery.visible or (title_screen != null and title_screen.visible)
 	insects.insect_tapped.connect(_open_quiz)
 
 	_build_bottom()
@@ -1242,11 +1244,24 @@ func _open_menu() -> void:
 	var fast: bool = gs.time_scale > 1.0
 	box.add_child(_button("Tiếp tục chơi", _close_popup, PRIMARY))
 	box.add_child(_button("Cách chơi", _open_help))
+	_sound_controls(box, _open_menu)
+	box.add_child(_button("Chế độ thử nhanh: %s" % ("BẬT (1 phút = 1 giờ)" if fast else "TẮT"), func():
+		gs.time_scale = 1.0 if fast else 60.0
+		_open_menu()))
+	box.add_child(_button("Màn hình chính", func():
+		_close_popup()
+		gs.save_game()
+		_show_title()))
+	box.add_child(_button("Chơi lại từ đầu", _ask_restart, DANGER))
+
+
+## Nút bật/tắt nhạc và thanh âm lượng; reopen: mở lại bảng hiện tại để cập nhật chữ trên nút.
+func _sound_controls(box: VBoxContainer, reopen: Callable) -> void:
 	var m := get_node_or_null("/root/Music")
 	if m:
 		box.add_child(_button("Nhạc nền: %s" % ("BẬT" if m.enabled else "TẮT"), func():
 			m.set_enabled(not m.enabled)
-			_open_menu()))
+			reopen.call()))
 		var vrow := HBoxContainer.new()
 		box.add_child(vrow)
 		var vl := _label("Âm lượng", 19, INK)
@@ -1262,16 +1277,100 @@ func _open_menu() -> void:
 		vs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		vs.value_changed.connect(func(v): m.set_volume(v / 100.0))
 		vrow.add_child(vs)
-	box.add_child(_button("Chế độ thử nhanh: %s" % ("BẬT (1 phút = 1 giờ)" if fast else "TẮT"), func():
-		gs.time_scale = 1.0 if fast else 60.0
-		_open_menu()))
-	box.add_child(_button("Chơi lại từ đầu", func():
-		_confirm("Chơi lại từ đầu?", "Toàn bộ cây, xu và sổ tay sẽ bị xóa.", "Xóa và chơi lại", func():
-			gs.reset_game()
-			selected = -1
-			pollen_from = -1
-			shelf_page = 0
-			_status("Bắt đầu vườn mới!")), DANGER))
+
+
+func _open_sound() -> void:
+	var box := _open_popup("Tùy chỉnh âm thanh", 560, 280, true, false)
+	_sound_controls(box, _open_sound)
+	box.add_child(_button("Xong", _close_popup, PRIMARY))
+
+
+func _ask_restart() -> void:
+	_confirm("Chơi lại từ đầu?", "Bạn có đồng ý chơi lại từ đầu không?\nToàn bộ cây, hạt, xu và sổ tay sẽ bị xóa.", "Đồng ý", func():
+		gs.reset_game()
+		selected = -1
+		pollen_from = -1
+		shelf_page = 0
+		_hide_title()
+		_status("Bắt đầu vườn mới!"), "Từ chối")
+
+
+# =====================================================================
+# Màn hình chính
+# =====================================================================
+
+func _build_title() -> void:
+	title_screen = Control.new()
+	title_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	title_screen.z_index = 2500          # trên shop và nhà kính, dưới bảng bật lên
+	title_screen.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(title_screen)
+	move_child(title_screen, overlay.get_index())
+	var bg := TextureRect.new()
+	bg.texture = load("res://art/man_hinh_chinh.png")
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_screen.add_child(bg)
+
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_top = 22
+	col.offset_bottom = -22
+	col.alignment = BoxContainer.ALIGNMENT_BEGIN
+	col.add_theme_constant_override("separation", 10)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_screen.add_child(col)
+	var name_l := _label("Vườn Ươm Kỳ Diệu", 64, Color("fff4d2"), HORIZONTAL_ALIGNMENT_CENTER)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_l.add_theme_color_override("font_outline_color", Color("6a3412"))
+	name_l.add_theme_constant_override("outline_size", 16)
+	name_l.add_theme_color_override("font_shadow_color", Color(0.2, 0.08, 0, 0.55))
+	name_l.add_theme_constant_override("shadow_offset_y", 5)
+	name_l.add_theme_constant_override("shadow_outline_size", 16)
+	col.add_child(name_l)
+	var spacer := Control.new()
+	spacer.custom_minimum_size.y = 6
+	col.add_child(spacer)
+
+	# bảng gỗ chứa các nút, đặt giữa màn hình
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(center)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiSkin.bevel_box(Color(0.42, 0.26, 0.13, 0.86), GOLD, 22, "normal", Vector4(22, 20, 22, 20)))
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.custom_minimum_size.x = 380
+	box.add_theme_constant_override("separation", 10)
+	panel.add_child(box)
+	box.add_child(_button("Tiếp tục chơi", _hide_title, PRIMARY))
+	box.add_child(_button("Cách chơi", _open_help))
+	box.add_child(_button("Tùy chỉnh âm thanh", _open_sound))
+	box.add_child(_button("Chơi lại từ đầu", _ask_restart, Color("c8641e")))
+	# trình duyệt (web / iPhone) không cho game tự đóng tab nên không có nút Thoát
+	if not OS.has_feature("web"):
+		box.add_child(_button("Thoát game", func():
+			gs.save_game()
+			get_tree().quit(), DANGER))
+	# chỉ hiện khi đây là cảnh chính của game (các bài thử tự nạp màn chơi thì bỏ qua)
+	title_screen.visible = get_tree().current_scene == self
+	if not title_screen.visible:
+		_hide_title()
+
+
+func _show_title() -> void:
+	if nursery.visible:
+		_close_nursery()
+	title_screen.visible = true
+
+
+func _hide_title() -> void:
+	title_screen.visible = false
+	if gs.away_report != "":
+		_show_info("Trong lúc bạn vắng mặt", gs.away_report)
+		gs.away_report = ""
 
 
 func _open_help() -> void:

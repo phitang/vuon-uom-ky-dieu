@@ -123,6 +123,7 @@ Dữ liệu lưu ở `user://save.json` (trên điện thoại nằm trong bộ 
 
 ## 6. Những gì đã có
 
+- Màn hình chính khi vào game (ảnh nền `art/man_hinh_chinh.png`, nhạc Garden of Whispers): Tiếp tục chơi, Cách chơi, Tùy chỉnh âm thanh, Chơi lại từ đầu (hỏi lại Đồng ý / Từ chối), Thoát game (bản web không có nút này vì trình duyệt không cho game tự đóng). Trong game, Menu có nút "Màn hình chính" để quay lại.
 - Cây lớn theo đồng hồ thật, cả khi tắt game (tối đa tính 7 ngày), bảng "Trong lúc bạn vắng mặt".
 - 3 loại đất theo từng chậu, sức khỏe theo nước và độ hợp đất, hạt chỉ lớn sau lần tưới đầu; kéo thả hạt để gieo; phân bón; súng thụ phấn kéo thả, cây kết hạt lai dần theo thời gian.
 - 5 bộ phận × gen trội/lặn, lai 2 cây ra hoa cho 3 hạt, 2% đột biến (tăng theo cấp vườn), 4 kiểu huyền thoại chỉ có qua đột biến; thu hạt từ cây già.
