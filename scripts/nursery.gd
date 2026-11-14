@@ -24,7 +24,7 @@ const BG_TEX := preload("res://art/shop/canh_nen.jpg")
 const BG_HORIZON := 533.0          # hàng điểm ảnh nơi đồi chạm bãi cỏ trong canh_nen.jpg
 const PAVE_TEX := preload("res://art/shop/san_da.jpg")
 const STAND_TEX := preload("res://art/shop/buc.png")
-const STAND_W := 96.0               # bề rộng bục trưng bày trên màn hình
+const STAND_W := 108.0               # bề rộng bục trưng bày trên màn hình
 const STAND_TOP := 26.0             # tâm mặt gỗ của bục, tính từ mép trên ảnh buc.png (300 px rộng)
 const BUSH_TEX := [preload("res://art/shop/bui_0.png"), preload("res://art/shop/bui_1.png"), preload("res://art/shop/bui_2.png")]
 
@@ -293,7 +293,7 @@ func _add_stand(k: int, pot: int) -> void:
 	pv.set_script(PlantView)
 	pv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pv.size = Vector2(70, 126)
-	pv.position = pos - Vector2(35, 126 + 10)
+	pv.position = pos - Vector2(35, 126 - 3)    # đáy chậu đặt vào giữa mặt gỗ của bục
 	pv.z_index = int(pos.y)
 	layer.add_child(pv)
 	var tag := Label.new()
@@ -360,7 +360,7 @@ func refresh() -> void:
 			pv.set_soil(gs.soils[s["pot"]])
 			tag.text = "%d xu" % gs.asking_price(p)
 		tag.reset_size()
-		tag.position = s["pos"] + Vector2(-tag.size.x / 2.0, 16)
+		tag.position = s["pos"] + Vector2(-tag.size.x / 2.0, 20)
 
 
 func set_status(t: String) -> void:
@@ -988,6 +988,8 @@ func _draw() -> void:
 		var p: Vector2 = s["pos"]
 		_ellipse(p + Vector2(0, sh - 22), STAND_W * 0.5, 12, Color(0, 0, 0, 0.2))
 		draw_texture_rect(STAND_TEX, Rect2(p.x - STAND_W / 2.0, p.y - 8 - STAND_TOP * k, STAND_W, sh), false)
+		if s["sold"] < 0:   # bóng chậu in trên mặt gỗ
+			_ellipse(p + Vector2(0, -6), 27, 7, Color(0.2, 0.1, 0.02, 0.35))
 	# cây bụi trang trí
 	var bushes := [Vector2(40, h - 140), Vector2(w - 50, h - 160), Vector2(w - 70, TOP_H + 150), Vector2(90, h - BOTTOM_H - 20)]
 	for i in bushes.size():
