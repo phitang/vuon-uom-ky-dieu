@@ -123,7 +123,7 @@ Dữ liệu lưu ở `user://save.json` (trên điện thoại nằm trong bộ 
 
 ## 6. Những gì đã có
 
-- Shop cây dùng ảnh vẽ bằng Gemini (phong cách anime) trong `art/shop/`: cảnh nền trời, đồi, bãi cỏ (`canh_nen.jpg`), sân lát đá (`san_da.jpg`), bục trưng bày (`buc.png`) và 3 bụi hoa (`bui_0..2.png`). Ảnh gốc chưa tách nền nằm trong `art/shop_goc/`. Muốn đổi thì thay file cùng tên.
+- Shop cây dùng ảnh vẽ bằng Gemini (phong cách anime) trong `art/shop/`: cảnh nền trời, đồi, bãi cỏ (`canh_nen.jpg`), sân lát đá (`san_da.jpg`), bục trưng bày (`buc.png`), 3 bụi hoa (`bui_0..2.png`) và 8 món trang trí (`chuong_gio`, `den_long`, `bon_hoa`, `ghe_da`, `o_du`, `xich_du`, `tuong`, `coi_xay_gio`; cánh cối xay vẽ bằng code để quay được). Ảnh gốc chưa tách nền nằm trong `art/shop_goc/`. Muốn đổi thì thay file cùng tên.
 - Màn hình chính khi vào game (ảnh nền `art/man_hinh_chinh.png`, nhạc Garden of Whispers): Tiếp tục chơi, Cách chơi, Tùy chỉnh âm thanh, Chơi lại từ đầu (hỏi lại Đồng ý / Từ chối), Thoát game (bản web không có nút này vì trình duyệt không cho game tự đóng). Trong game, Menu có Tiếp tục chơi, Cách chơi, nhạc nền / âm lượng và nút "Màn hình chính" để quay lại.
 - Cây lớn theo đồng hồ thật, cả khi tắt game (tối đa tính 7 ngày), bảng "Trong lúc bạn vắng mặt".
 - 3 loại đất theo từng chậu, sức khỏe theo nước và độ hợp đất, hạt chỉ lớn sau lần tưới đầu; kéo thả hạt để gieo; phân bón; súng thụ phấn kéo thả, cây kết hạt lai dần theo thời gian.

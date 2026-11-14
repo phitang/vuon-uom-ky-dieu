@@ -203,7 +203,7 @@ const SHOP_DECOR := [
 	{"id": "o_du", "ten": "Bàn ô dù", "gia": 1500, "mo_ta": "Bàn nhỏ có ô che nắng"},
 	{"id": "xich_du", "ten": "Xích đu", "gia": 3500, "mo_ta": "Xích đu gỗ đung đưa"},
 	{"id": "tuong", "ten": "Tượng thỏ đá", "gia": 4000, "mo_ta": "Tượng thỏ may mắn trên bệ đá"},
-	{"id": "coi_xay_gio", "ten": "Cối xay gió", "gia": 5000, "mo_ta": "Cối xay gió nhỏ quay trên đồi"},
+	{"id": "coi_xay_gio", "ten": "Cối xay gió", "gia": 5000, "mo_ta": "Cối xay gió nhỏ quay trên bãi cỏ"},
 ]
 ## Mỗi điểm sức hút: khách tới nhanh hơn 5% (tối đa nhanh gấp đôi), dễ mua hơn 1% (tối đa 12%).
 const APPEAL_SPAWN := 0.05

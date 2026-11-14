@@ -275,93 +275,69 @@ static func draw_counter_front(ci: CanvasItem, size: Vector2, tier: int, font: F
 # =====================================================================
 # Đồ trang trí (pos = chân đế, s = tỉ lệ)
 # =====================================================================
-static func draw_decor(ci: CanvasItem, id: String, pos: Vector2, s := 1.0, t := 0.0) -> void:
+## Ảnh đồ trang trí vẽ bằng Gemini (cùng phong cách với cảnh nền shop):
+## id -> [ảnh, chiều cao trên màn hình khi s = 1, neo]. Neo "day": pos là giữa chân đồ vật;
+## "treo": pos là điểm treo phía trên (chuông gió).
+const DECOR_TEX := {
+	"den_long": [preload("res://art/shop/den_long.png"), 84.0, "day"],
+	"ghe_da": [preload("res://art/shop/ghe_da.png"), 50.0, "day"],
+	"o_du": [preload("res://art/shop/o_du.png"), 92.0, "day"],
+	"bon_hoa": [preload("res://art/shop/bon_hoa.png"), 54.0, "day"],
+	"tuong": [preload("res://art/shop/tuong.png"), 70.0, "day"],
+	"coi_xay_gio": [preload("res://art/shop/coi_xay_gio.png"), 76.0, "day"],
+	"xich_du": [preload("res://art/shop/xich_du.png"), 80.0, "day"],
+	"chuong_gio": [preload("res://art/shop/chuong_gio.png"), 54.0, "treo"],
+}
+const WINDMILL_HUB := Vector2(0.49, 0.38)   # vị trí trục cánh quạt trên ảnh cối xay (tỉ lệ)
+
+
+## flip: lật ngang (đèn lồng bên phải cổng quay vào trong).
+static func draw_decor(ci: CanvasItem, id: String, pos: Vector2, s := 1.0, t := 0.0, flip := false) -> void:
+	if not DECOR_TEX.has(id):
+		return
+	var info: Array = DECOR_TEX[id]
+	var tex: Texture2D = info[0]
+	var h: float = info[1] * s
+	var w: float = h * tex.get_width() / tex.get_height()
+	var top_left := pos - Vector2(w / 2.0, h) if info[2] == "day" else pos - Vector2(w / 2.0, 0)
+	if info[2] == "day":
+		_ellipse(ci, pos, w * 0.42, maxf(3.0, h * 0.06), Color(0, 0, 0, 0.18))
 	match id:
-		"den_long":
-			_ellipse(ci, pos, 12 * s, 4 * s, Color(0, 0, 0, 0.18))
-			ci.draw_rect(Rect2(pos + Vector2(-3, -70) * s, Vector2(6, 70) * s), Color("2a2a2e"))
-			ci.draw_line(pos + Vector2(0, -70) * s, pos + Vector2(14, -70) * s, Color("2a2a2e"), 3 * s)
-			var lp := pos + Vector2(14, -54) * s
+		"den_long":   # ánh đèn lồng nhấp nháy sau lồng đèn
+			var lp := top_left + Vector2(w * (0.27 if flip else 0.73), h * 0.27)
 			var g := 0.7 + 0.3 * sin(t * 5.0 + pos.x)
-			ci.draw_circle(lp, 22 * s, Color(1, 0.6, 0.3, 0.14 * g))
-			ci.draw_line(lp + Vector2(0, -16) * s, lp + Vector2(0, -12) * s, Color("2a2a2e"), 1.5 * s)
-			_ellipse(ci, lp, 9 * s, 12 * s, Color("d8302a"))
-			_ellipse(ci, lp + Vector2(-2, -3) * s, 4 * s, 6 * s, Color(1, 0.75, 0.4, 0.7 * g))
-			ci.draw_rect(Rect2(lp + Vector2(-5, -13) * s, Vector2(10, 3) * s), GOLD)
-			ci.draw_rect(Rect2(lp + Vector2(-5, 10) * s, Vector2(10, 3) * s), GOLD)
-			ci.draw_line(lp + Vector2(0, 13) * s, lp + Vector2(0, 21) * s, GOLD, 1.5 * s)
-		"ghe_da":
-			_ellipse(ci, pos + Vector2(0, 2) * s, 40 * s, 7 * s, Color(0, 0, 0, 0.2))
-			for x in [-26, 20]:
-				ci.draw_rect(Rect2(pos + Vector2(x, -16) * s, Vector2(8, 16) * s), Color("8f8c84"))
-			_round_rect(ci, Rect2(pos + Vector2(-36, -24) * s, Vector2(72, 10) * s), 3 * s, Color("b7b4aa"))
-			ci.draw_rect(Rect2(pos + Vector2(-36, -24) * s, Vector2(72, 3) * s), Color("d8d6cf"))
-		"o_du":
-			_ellipse(ci, pos, 34 * s, 7 * s, Color(0, 0, 0, 0.18))
-			ci.draw_rect(Rect2(pos + Vector2(-2, -74) * s, Vector2(4, 74) * s), Color("8a8a8a"))
-			_ellipse(ci, pos + Vector2(0, -24) * s, 20 * s, 6 * s, Color("8a5a2b"))
-			ci.draw_rect(Rect2(pos + Vector2(-2, -24) * s, Vector2(4, 24) * s), Color("6e4527"))
-			for i in 6:
-				var a0 := PI + PI * i / 6.0
-				var a1 := PI + PI * (i + 1) / 6.0
-				var tip := pos + Vector2(0, -88) * s
-				var col := Color("e2453c") if i % 2 == 0 else Color("f4f1ea")
-				ci.draw_colored_polygon(PackedVector2Array([tip, pos + Vector2(cos(a0) * 38, -66 + sin(a0) * -2) * s, pos + Vector2(cos(a1) * 38, -66 + sin(a1) * -2) * s]), col)
-		"bon_hoa":
-			_ellipse(ci, pos, 36 * s, 11 * s, Color("8f8c84"))
-			_ellipse(ci, pos + Vector2(0, -3) * s, 32 * s, 9 * s, Color("5a3a22"))
-			var cols := [Color("f2a7c3"), Color("f6d55c"), Color("e2453c"), Color("9b6bd6"), Color("ffffff"), Color("f39a3d")]
-			for i in 11:
-				var p := pos + Vector2(-26 + i * 5.2, -8 - (i % 3) * 4) * s
-				ci.draw_circle(p + Vector2(0, 4) * s, 4.5 * s, Color("4f9a45"))
-				ci.draw_circle(p, 3.2 * s, cols[i % cols.size()])
-		"tuong":
-			_ellipse(ci, pos, 22 * s, 6 * s, Color(0, 0, 0, 0.2))
-			ci.draw_rect(Rect2(pos + Vector2(-16, -16) * s, Vector2(32, 16) * s), Color("9c978b"))
-			ci.draw_rect(Rect2(pos + Vector2(-18, -20) * s, Vector2(36, 5) * s), Color("b9b4a6"))
-			var st := Color("c9c6bc")
-			_ellipse(ci, pos + Vector2(0, -34) * s, 12 * s, 14 * s, st)
-			ci.draw_circle(pos + Vector2(0, -52) * s, 9 * s, st)
-			_ellipse(ci, pos + Vector2(-4, -68) * s, 3 * s, 10 * s, st)
-			_ellipse(ci, pos + Vector2(4, -68) * s, 3 * s, 10 * s, st)
-			ci.draw_circle(pos + Vector2(-3, -53) * s, 1.3 * s, Color("5a5a5a"))
-			ci.draw_circle(pos + Vector2(3, -53) * s, 1.3 * s, Color("5a5a5a"))
-			ci.draw_circle(pos + Vector2(10, -24) * s, 4 * s, st)
-		"coi_xay_gio":
-			var body := PackedVector2Array([pos + Vector2(-14, 0) * s, pos + Vector2(14, 0) * s, pos + Vector2(8, -54) * s, pos + Vector2(-8, -54) * s])
-			ci.draw_colored_polygon(body, Color("e8dcc8"))
-			ci.draw_colored_polygon(PackedVector2Array([pos + Vector2(-11, -54) * s, pos + Vector2(11, -54) * s, pos + Vector2(0, -68) * s]), Color("a0523a"))
-			ci.draw_rect(Rect2(pos + Vector2(-4, -14) * s, Vector2(8, 14) * s), Color("6e4527"))
-			var hub := pos + Vector2(0, -50) * s
-			for i in 4:
-				var a := t * 1.5 + i * PI / 2.0
-				var dir := Vector2.from_angle(a)
-				var nrm := Vector2(-dir.y, dir.x)
-				ci.draw_colored_polygon(PackedVector2Array([hub + nrm * 2 * s, hub + dir * 34 * s + nrm * 2 * s, hub + dir * 34 * s + nrm * 9 * s, hub + dir * 8 * s + nrm * 7 * s]), Color("f4f1ea"))
-				ci.draw_line(hub, hub + dir * 34 * s, Color("6e4527"), 2 * s)
-			ci.draw_circle(hub, 3 * s, Color("3a2a1a"))
-		"xich_du":
-			_ellipse(ci, pos, 40 * s, 7 * s, Color(0, 0, 0, 0.18))
-			var wood := Color("7a5230")
-			for x in [-34, 34]:
-				ci.draw_line(pos + Vector2(x - 6, 0) * s, pos + Vector2(x * 0.8, -74) * s, wood, 4 * s)
-				ci.draw_line(pos + Vector2(x + 6, 0) * s, pos + Vector2(x * 0.8, -74) * s, wood, 4 * s)
-			ci.draw_line(pos + Vector2(-30, -74) * s, pos + Vector2(30, -74) * s, wood, 5 * s)
-			var sw := sin(t * 1.6) * 8.0
-			var seat := pos + Vector2(sw, -22) * s
-			for x in [-14, 14]:
-				ci.draw_line(pos + Vector2(x, -74) * s, seat + Vector2(x, 0) * s, Color("8a8a8a"), 1.5 * s)
-			_round_rect(ci, Rect2(seat + Vector2(-18, -3) * s, Vector2(36, 6) * s), 2 * s, Color("c9955a"))
-		"chuong_gio":
-			var top := pos
-			ci.draw_line(top + Vector2(-12, 0) * s, top + Vector2(12, 0) * s, Color("6e4527"), 3 * s)
-			for i in 5:
-				var x := (-10 + i * 5) * s
-				var sway := sin(t * 3.0 + i) * 3.0 * s
-				var l := (14 + (i % 3) * 5) * s
-				ci.draw_line(top + Vector2(x, 0), top + Vector2(x + sway, l), Color("a8a8a8"), 1.0)
-				ci.draw_rect(Rect2(top + Vector2(x + sway - 1.5 * s, l), Vector2(3 * s, 10 * s)), Color("cfd6dc"))
-			ci.draw_circle(top + Vector2(sin(t * 3.0) * 2.0, 34) * s, 3 * s, Color("e2453c"))
+			ci.draw_circle(lp, 20 * s, Color(1, 0.6, 0.3, 0.16 * g))
+			ci.draw_circle(lp, 12 * s, Color(1, 0.7, 0.4, 0.14 * g))
+		"chuong_gio":   # đung đưa nhẹ quanh điểm treo
+			var ang := sin(t * 3.0) * 0.06
+			ci.draw_set_transform(pos, ang, Vector2.ONE)
+			ci.draw_texture_rect(tex, Rect2(Vector2(-w / 2.0, 0), Vector2(w, h)), false)
+			ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
+	if flip:
+		ci.draw_set_transform(top_left + Vector2(w, 0), 0.0, Vector2(-1, 1))
+		ci.draw_texture_rect(tex, Rect2(Vector2.ZERO, Vector2(w, h)), false)
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	else:
+		ci.draw_texture_rect(tex, Rect2(top_left, Vector2(w, h)), false)
+	if id == "coi_xay_gio":   # 4 cánh quạt gỗ quay quanh trục
+		var hub := top_left + Vector2(w, h) * WINDMILL_HUB
+		var blade := 40.0 * s
+		for i in 4:
+			var a := t * 1.5 + i * PI / 2.0
+			var dir := Vector2.from_angle(a)
+			var nrm := Vector2(-dir.y, dir.x)
+			var p0 := hub + dir * 6 * s
+			var pts := PackedVector2Array([p0 + nrm * 1.5 * s, hub + dir * blade + nrm * 1.5 * s,
+				hub + dir * blade + nrm * 9 * s, hub + dir * 9 * s + nrm * 7 * s])
+			ci.draw_colored_polygon(pts, Color("f2e8d2"))
+			for k in 4:   # nan gỗ trên cánh
+				var q := 0.3 + k * 0.18
+				ci.draw_line(hub + dir * blade * q + nrm * 1.5 * s, hub + dir * blade * q + nrm * 8 * s, Color("9a7048"), 1.0)
+			ci.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color("7a5230"), 1.2)
+			ci.draw_line(hub, hub + dir * blade, Color("6e4527"), 2.2 * s)
+		ci.draw_circle(hub, 4 * s, Color("5a3a22"))
+		ci.draw_circle(hub, 1.8 * s, Color("c9a06a"))
 
 
 ## Kích thước chuẩn của hình xem trước (dùng trong cửa hàng).
@@ -386,9 +362,14 @@ static func draw_preview(ci: CanvasItem, kind: String, tier: int, size: Vector2,
 			draw_fence(ci, size.x, size.y * 0.55, -1000.0, tier)
 		_:
 			ci.draw_rect(Rect2(Vector2.ZERO, size), Color("6fb35a"))
-			var s := 0.62 if kind in ["o_du", "xich_du", "den_long", "coi_xay_gio", "tuong"] else 0.85
-			var base := Vector2(c.x - (8.0 * s if kind == "den_long" else 0.0), size.y - 8)
-			if kind == "chuong_gio":
-				base = Vector2(c.x, 10)
-				s = 1.1
-			draw_decor(ci, kind, base, s, t)
+			# phóng ảnh vừa khung xem trước
+			if DECOR_TEX.has(kind):
+				var info: Array = DECOR_TEX[kind]
+				var tex: Texture2D = info[0]
+				var hh: float = info[1]
+				var ww: float = hh * tex.get_width() / tex.get_height()
+				var s := minf((size.y - 18.0) / hh, (size.x - 14.0) / ww)
+				if kind == "coi_xay_gio":
+					s *= 0.8          # chừa chỗ cho cánh quạt
+				var base := Vector2(c.x, size.y - 8) if info[2] == "day" else Vector2(c.x, 9)
+				draw_decor(ci, kind, base, s, t)

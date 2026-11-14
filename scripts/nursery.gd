@@ -945,10 +945,7 @@ func _draw() -> void:
 	var top := fy0 + 30.0 - BG_HORIZON * bs
 	draw_rect(Rect2(0, 0, w, h), Color("4aa6e0"))
 	draw_texture_rect(BG_TEX, Rect2(0, top, w, BG_TEX.get_height() * bs), false)
-	# cối xay gió trên đồi (sau hàng rào)
 	var fy := _gate().y - 22
-	if gs.decor_owned.get("coi_xay_gio", false):
-		Art.draw_decor(self, "coi_xay_gio", Vector2(w * 0.36, fy + 4), 1.0, anim)
 	# hàng rào, cổng, bảng hiệu (theo bậc nâng cấp)
 	Art.draw_fence(self, w, fy, _gate().x, gs.upgrade_tier("hang_rao"))
 	Art.draw_gate_posts(self, _gate().x, fy, gs.upgrade_tier("hang_rao"))
@@ -958,7 +955,7 @@ func _draw() -> void:
 		Art.draw_decor(self, "chuong_gio", Vector2(_gate().x + 70, fy - 14), 1.0, anim)
 	if gs.decor_owned.get("den_long", false):
 		for side in [-1, 1]:
-			Art.draw_decor(self, "den_long", Vector2(_gate().x + side * 100 - 7, fy + 34), 1.0, anim)
+			Art.draw_decor(self, "den_long", Vector2(_gate().x + side * 140, fy + 36), 1.0, anim, side > 0)
 	# lối đi từ cổng
 	var path := PackedVector2Array([_gate() + Vector2(-46, -10), _gate() + Vector2(46, -10),
 		Vector2(c.x + 60, c.y - r.y + 10), Vector2(c.x - 60, c.y - r.y + 10)])
@@ -967,6 +964,9 @@ func _draw() -> void:
 	_ellipse(c + Vector2(0, 6), r.x + 22, r.y + 18, Color(0.18, 0.28, 0.1, 0.22))
 	_ellipse(c, r.x + 14, r.y + 12, Color("8d8576"))
 	_paved_ellipse(c, r.x, r.y)
+	# cối xay gió trên bãi cỏ trước hàng rào, giữa quầy và cổng
+	if gs.decor_owned.get("coi_xay_gio", false):
+		Art.draw_decor(self, "coi_xay_gio", Vector2(w * 0.335, fy + 42), 0.9, anim)
 	# đồ trang trí trên cỏ
 	var spots := {
 		"bon_hoa": [Vector2(w * 0.22, fy + 50), Vector2(w * 0.84, fy + 50)],
