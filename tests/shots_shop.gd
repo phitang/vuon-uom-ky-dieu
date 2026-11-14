@@ -9,10 +9,10 @@ func _ready() -> void:
 	gs.new_game()
 	gs.away_report = ""
 	gs.coins = 4820
-	for i in 9:
+	for i in 12:
 		gs.pots.append({})
 		gs.soils.append("thuong")
-	var looks := [["cuc","vang"],["cuc","do"],["cuc","tim"],["hong","do"],["cuc","xanh"],["sao","tim"],["cuc","hongnhat"],["lan","xanh"],["cuc","cauvong"],["tulip","cam"],["cuc","cam"],["cuc","trang"]]
+	var looks := [["cuc","vang"],["cuc","do"],["cuc","tim"],["hong","do"],["cuc","xanh"],["sao","tim"],["cuc","hongnhat"],["lan","xanh"],["cuc","cauvong"],["tulip","cam"],["cuc","cam"],["cuc","trang"],["hong","vang"],["sao","hongnhat"],["lan","tim"]]
 	for i in looks.size():
 		var g := {"hoa":[looks[i][0],looks[i][0]],"la":["tron","tron"],"than":["thang","thang"],"mau":[looks[i][1],looks[i][1]],"co":["vua","vua"]}
 		gs.seeds.append({"gen": g, "bo_me": []})
@@ -20,7 +20,7 @@ func _ready() -> void:
 		gs.water(i)
 		gs.pots[i]["tien_do"] = 12000.0
 	gs._advance(1.0)
-	for i in 12:
+	for i in 15:
 		gs.set_display(i, true)
 	var main = load("res://scenes/main.tscn").instantiate()
 	add_child(main)

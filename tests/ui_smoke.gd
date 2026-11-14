@@ -144,8 +144,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	print("Sổ tay: ", gs.collection.size(), " giống")
 	main._open_menu()
-	_press_text("Chế độ thử nhanh")
-	print("time_scale=", gs.time_scale)
+	await get_tree().process_frame
 	main._close_popup()
 
 	# thu hạt từ cây già bằng kéo

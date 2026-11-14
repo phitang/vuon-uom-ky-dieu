@@ -19,6 +19,8 @@ func _ready() -> void:
 	await _shot(out + "/title3_rong.png")
 	main._hide_title()
 	await _shot(out + "/title4_vao.png")
+	main._open_menu()
+	await _shot(out + "/title5_menu.png")
 	get_tree().quit()
 
 func _frames() -> void:

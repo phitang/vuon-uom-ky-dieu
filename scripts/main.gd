@@ -1240,19 +1240,14 @@ func _confirm(title: String, text: String, yes_text: String, on_yes: Callable, n
 
 
 func _open_menu() -> void:
-	var box := _open_popup("Menu", 560, 520)
-	var fast: bool = gs.time_scale > 1.0
+	var box := _open_popup("Menu", 560, 420)
 	box.add_child(_button("Tiếp tục chơi", _close_popup, PRIMARY))
 	box.add_child(_button("Cách chơi", _open_help))
 	_sound_controls(box, _open_menu)
-	box.add_child(_button("Chế độ thử nhanh: %s" % ("BẬT (1 phút = 1 giờ)" if fast else "TẮT"), func():
-		gs.time_scale = 1.0 if fast else 60.0
-		_open_menu()))
 	box.add_child(_button("Màn hình chính", func():
 		_close_popup()
 		gs.save_game()
 		_show_title()))
-	box.add_child(_button("Chơi lại từ đầu", _ask_restart, DANGER))
 
 
 ## Nút bật/tắt nhạc và thanh âm lượng; reopen: mở lại bảng hiện tại để cập nhật chữ trên nút.

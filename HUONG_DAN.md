@@ -36,7 +36,7 @@ Dự án Godot 4 cho game trồng và lai giống cây trên Android, làm theo 
   - Các con số (10 giây, 2 phút, 50 xu, 100 xu, số cây tối thiểu) nằm ở mục "Khách ẩn" trong `scripts/data.gd`. Hình nhân vật tạo bằng `tools/tao_nhan_vat.py cong_tu ve_si dan_anh dan_anh_thuong`.
 - *Thùng rác* để bỏ cây. Menu dưới: Menu (cách chơi, chế độ thử nhanh, chơi lại), Vật tư, Sổ tay, Shop cây, nút ◀ ▶ để chuyển kệ.
 
-**Chơi thử nhanh:** bấm **Menu** → bật **Chế độ thử nhanh** (1 phút thật = 1 giờ trong game). Nhớ tắt khi chơi thật.
+**Chơi lại từ đầu:** bấm **Menu** → **Màn hình chính** → **Chơi lại từ đầu** (game hỏi lại trước khi xóa).
 
 ## 2. Đưa game lên điện thoại Android (file APK)
 
@@ -123,12 +123,12 @@ Dữ liệu lưu ở `user://save.json` (trên điện thoại nằm trong bộ 
 
 ## 6. Những gì đã có
 
-- Màn hình chính khi vào game (ảnh nền `art/man_hinh_chinh.png`, nhạc Garden of Whispers): Tiếp tục chơi, Cách chơi, Tùy chỉnh âm thanh, Chơi lại từ đầu (hỏi lại Đồng ý / Từ chối), Thoát game (bản web không có nút này vì trình duyệt không cho game tự đóng). Trong game, Menu có nút "Màn hình chính" để quay lại.
+- Màn hình chính khi vào game (ảnh nền `art/man_hinh_chinh.png`, nhạc Garden of Whispers): Tiếp tục chơi, Cách chơi, Tùy chỉnh âm thanh, Chơi lại từ đầu (hỏi lại Đồng ý / Từ chối), Thoát game (bản web không có nút này vì trình duyệt không cho game tự đóng). Trong game, Menu có Tiếp tục chơi, Cách chơi, nhạc nền / âm lượng và nút "Màn hình chính" để quay lại.
 - Cây lớn theo đồng hồ thật, cả khi tắt game (tối đa tính 7 ngày), bảng "Trong lúc bạn vắng mặt".
 - 3 loại đất theo từng chậu, sức khỏe theo nước và độ hợp đất, hạt chỉ lớn sau lần tưới đầu; kéo thả hạt để gieo; phân bón; súng thụ phấn kéo thả, cây kết hạt lai dần theo thời gian.
 - 5 bộ phận × gen trội/lặn, lai 2 cây ra hoa cho 3 hạt, 2% đột biến (tăng theo cấp vườn), 4 kiểu huyền thoại chỉ có qua đột biến; thu hạt từ cây già.
 - Giá thị trường theo độ hiếm, giai đoạn, sức khỏe, nhu cầu trong ngày, số cây cùng giống đã bán.
-- Tự đặt giá 50%–300%, quầy bán hàng: tối đa 5 khách, 4 loại khách, 3 cách trả lời, chỉ hiện mức Thấp / Vừa / Cao (không hiện %).
+- Tự đặt giá 50%–300%, Shop cây trưng bày tối đa 15 cây, quầy bán hàng: tối đa 5 khách, 4 loại khách, 3 cách trả lời, chỉ hiện mức Thấp / Vừa / Cao (không hiện %).
 - Cửa hàng, cấp vườn theo doanh thu, Sổ tay có phần thưởng mốc và gợi ý huyền thoại.
 
 ## 7. Khác với tài liệu thiết kế / chưa làm

@@ -227,11 +227,13 @@ func _queue_spot(n: int) -> Vector2:
 	return _counter_spot() + Vector2(52 + 50 * n, 26 + 12 * n)
 
 
-## Vị trí 12 gốc trưng bày (tính theo bán kính sân), xếp từ hàng trước ra sau.
+## Vị trí 15 gốc trưng bày (tính theo bán kính sân), xếp từ hàng trước ra sau.
 const STAND_SPOTS := [
 	Vector2(-0.2, 0.95), Vector2(0.2, 0.95), Vector2(-0.58, 0.78), Vector2(0.58, 0.78),
 	Vector2(-0.92, 0.42), Vector2(0.92, 0.42), Vector2(-0.98, -0.32), Vector2(0.98, -0.32),
 	Vector2(-0.62, -0.76), Vector2(0.62, -0.76), Vector2(-0.28, -0.92), Vector2(0.28, -0.92),
+	# vòng trong: hai bên nhà kính và trước cửa nhà kính
+	Vector2(-0.52, 0.06), Vector2(0.52, 0.06), Vector2(0.0, 0.6),
 ]
 
 
