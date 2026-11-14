@@ -900,7 +900,7 @@ func _use_tool(kind: String) -> void:
 		_status("Hãy chọn một cây còn sống trước khi dùng dụng cụ.")
 		return
 	if p.get("trung_bay", false):
-		_status("Cây đang trưng bày ở shop. Vào Shop cây rồi chạm nhà kính (hoặc nút Về vườn) để mang về.")
+		_status("Cây đang trưng bày ở shop. Vào Shop cây rồi bấm Về vườn để mang về.")
 		return
 	var st: int = gs.stage_of(p)
 	match kind:
@@ -1389,7 +1389,7 @@ func _open_help() -> void:
 		"• Bấm vào ô Giá để chỉnh giá cây. Bấm Trưng bày để đưa cây ra Shop cây cảnh.\n" +
 		"  Cây chưa ra hoa vẫn bán được nhưng chỉ thu về 50% xu (game sẽ hỏi lại trước khi đưa ra shop).\n" +
 		"• Trong Shop cây: khách vào xem các cây, ai ra đứng ở quầy thì trò chuyện mua cây; chọn cách trả lời khéo để khách mua.\n" +
-		"  Chạm vào cây trên gốc để chỉnh giá. Chạm nhà kính giữa sân (hoặc nút Về vườn): cây chưa bán trở lại chậu cũ.\n" +
+		"  Chạm vào cây trên bục để chỉnh giá. Bấm Về vườn: cây chưa bán trở lại chậu cũ.\n" +
 		"• Cây ra hoa lần đầu được ghi vào Sổ tay. Tìm đủ các giống hiếm và huyền thoại!", 21))
 	box.add_child(_button("Đóng", _close_popup, PRIMARY))
 

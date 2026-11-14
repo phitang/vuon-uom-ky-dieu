@@ -96,13 +96,9 @@ func _ready() -> void:
 	print("Khách ra quầy: ", chats, " | cây đã bán: ", sold_count, " | xu=", gs.coins)
 	nur.refresh()
 	var left: Array = gs.displayed_pots()
-	# bấm vào nhà kính giữa shop để về vườn
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
-	ev.pressed = true
-	ev.position = Vector2(150, 140)
-	nur.house._gui_input(ev)
-	print("Bấm nhà kính: shop còn mở=", nur.visible)
+	# bấm nút Về vườn
+	nur.back_pressed.emit()
+	print("Bấm Về vườn: shop còn mở=", nur.visible)
 	print("Về vườn: còn trưng bày=", gs.displayed_pots().size(), " (trước đó ", left.size(), ") | ", main.status_l.text)
 	# đảm bảo chậu 0 có cây để các bước sau
 	# chậu trống không đất: cho đất

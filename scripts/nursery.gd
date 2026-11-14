@@ -1,6 +1,6 @@
 extends Control
-## Shop cây cảnh: sân lát đá, nhà kính ở giữa (chạm vào để về vườn), các gốc cây
-## trưng bày quanh sân, quầy thu ngân có người bán và cổng vào. Khách vào xem cây;
+## Shop cây cảnh: sân lát đá, các bục trưng bày cây
+## xếp hai vòng quanh sân, quầy thu ngân có người bán và cổng vào. Khách vào xem cây;
 ## ai đứng ở quầy thì mở giao diện trò chuyện mua cây (do main.gd vẽ).
 
 const Data := preload("res://scripts/data.gd")
@@ -19,11 +19,13 @@ signal special_requested(customer: Dictionary)   # khách ẩn (công tử / b�
 const TOP_H := 56.0
 const BOTTOM_H := 64.0
 const CUST_SIZE := Vector2(64, 128)
-const HOUSE_SIZE := Vector2(236, 240)
-# Ảnh vẽ bằng Gemini (phong cách anime): cảnh nền trời-đồi-cỏ, sân lát đá, nhà kính, bụi hoa
+# Ảnh vẽ bằng Gemini (phong cách anime): cảnh nền trời-đồi-cỏ, sân lát đá, bục trưng bày, bụi hoa
 const BG_TEX := preload("res://art/shop/canh_nen.jpg")
 const BG_HORIZON := 533.0          # hàng điểm ảnh nơi đồi chạm bãi cỏ trong canh_nen.jpg
 const PAVE_TEX := preload("res://art/shop/san_da.jpg")
+const STAND_TEX := preload("res://art/shop/buc.png")
+const STAND_W := 96.0               # bề rộng bục trưng bày trên màn hình
+const STAND_TOP := 26.0             # tâm mặt gỗ của bục, tính từ mép trên ảnh buc.png (300 px rộng)
 const BUSH_TEX := [preload("res://art/shop/bui_0.png"), preload("res://art/shop/bui_1.png"), preload("res://art/shop/bui_2.png")]
 
 var gs: Node
@@ -40,7 +42,6 @@ var title_l: Label
 var cash_l: Label
 var status_l: Label
 var layer: Control            # chứa gốc cây và khách, sắp theo chiều sâu
-var house: Control            # nhà kính giữa sân
 var desk_front: Control       # mặt trước quầy (che nửa dưới người bán)
 var keeper: Control           # người bán
 var keeper_target := 0.0
@@ -70,10 +71,6 @@ func _ready() -> void:
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(layer)
-	house = GreenhouseBuilding.new()
-	house.size = HOUSE_SIZE
-	house.tapped.connect(func(): back_pressed.emit())
-	layer.add_child(house)
 	keeper = Control.new()
 	keeper.set_script(CustomerView)
 	keeper.size = CUST_SIZE
@@ -170,15 +167,13 @@ func _counter_desk() -> Rect2:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and house != null:
+	if what == NOTIFICATION_RESIZED and keeper != null:
 		_layout_props()
 
 
-## Đặt nhà kính, quầy và người bán theo kích thước màn hình.
+## Đặt quầy và người bán theo kích thước màn hình.
 func _layout_props() -> void:
 	var c := _center()
-	house.position = c + Vector2(-HOUSE_SIZE.x / 2.0, 44 - HOUSE_SIZE.y)
-	house.z_index = int(c.y + 44)
 	var d := _counter_desk()
 	desk_front.position = d.position
 	desk_front.size = d.size
@@ -232,13 +227,13 @@ func _queue_spot(n: int) -> Vector2:
 	return _counter_spot() + Vector2(52 + 50 * n, 26 + 12 * n)
 
 
-## Vị trí 15 gốc trưng bày (tính theo bán kính sân), xếp từ hàng trước ra sau.
+## Vị trí 15 bục trưng bày (tính theo bán kính sân): vòng ngoài 10 bục chừa lối vào từ cổng,
+## vòng trong 5 bục quanh tâm sân. Xếp từ trước ra sau để cây bày trước nằm ở phía trước.
 const STAND_SPOTS := [
-	Vector2(-0.2, 0.95), Vector2(0.2, 0.95), Vector2(-0.58, 0.78), Vector2(0.58, 0.78),
-	Vector2(-0.92, 0.42), Vector2(0.92, 0.42), Vector2(-0.98, -0.32), Vector2(0.98, -0.32),
-	Vector2(-0.62, -0.76), Vector2(0.62, -0.76), Vector2(-0.28, -0.92), Vector2(0.28, -0.92),
-	# vòng trong: hai bên nhà kính và trước cửa nhà kính
-	Vector2(-0.52, 0.06), Vector2(0.52, 0.06), Vector2(0.0, 0.6),
+	Vector2(0.272, 0.91), Vector2(-0.272, 0.91), Vector2(0.728, 0.611), Vector2(-0.728, 0.611),
+	Vector2(0.0, 0.48), Vector2(-0.437, 0.19), Vector2(0.437, 0.19), Vector2(0.944, 0.11),
+	Vector2(-0.944, 0.11), Vector2(-0.27, -0.28), Vector2(0.27, -0.28), Vector2(0.849, -0.426),
+	Vector2(-0.849, -0.426), Vector2(0.475, -0.823), Vector2(-0.475, -0.823),
 ]
 
 
@@ -266,9 +261,9 @@ func open_shop() -> void:
 	spawn_timer = 1.5
 	_layout_props()
 	if stands.is_empty():
-		set_status("Chưa có cây trưng bày. Chạm vào nhà kính để về vườn và chọn cây Trưng bày.")
+		set_status("Chưa có cây trưng bày. Bấm Về vườn rồi chọn cây Trưng bày.")
 	else:
-		set_status("Khách sắp tới! Chạm cây để chỉnh giá, chạm nhà kính để về vườn.")
+		set_status("Khách sắp tới! Chạm cây để chỉnh giá, bấm Về vườn để quay lại.")
 	refresh()
 
 
@@ -305,14 +300,18 @@ func _add_stand(k: int, pot: int) -> void:
 	tag.add_theme_font_size_override("font_size", 15)
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("f7e7b8")
-	sb.border_color = Color("8a5a2b")
+	# bảng giá gỗ nhỏ gắn trước bục
+	sb.bg_color = Color("7a4a26")
+	sb.border_color = Color("e2bf73")
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(6)
-	sb.content_margin_left = 6
-	sb.content_margin_right = 6
+	sb.set_corner_radius_all(7)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.shadow_color = Color(0, 0, 0, 0.3)
+	sb.shadow_size = 2
+	sb.shadow_offset = Vector2(0, 2)
 	tag.add_theme_stylebox_override("normal", sb)
-	tag.add_theme_color_override("font_color", Color("3a2614"))
+	tag.add_theme_color_override("font_color", Color("fff1cf"))
 	tag.z_index = int(pos.y) + 1
 	layer.add_child(tag)
 	var btn := Button.new()
@@ -349,7 +348,7 @@ func refresh() -> void:
 		if s["sold"] >= 0:
 			pv.visible = false
 			tag.text = "ĐÃ BÁN"
-			tag.add_theme_color_override("font_color", Color("b8473a"))
+			tag.add_theme_color_override("font_color", Color("ffb4a0"))
 		else:
 			var p: Dictionary = gs.pots[s["pot"]]
 			if p.is_empty():
@@ -361,7 +360,7 @@ func refresh() -> void:
 			pv.set_soil(gs.soils[s["pot"]])
 			tag.text = "%d xu" % gs.asking_price(p)
 		tag.reset_size()
-		tag.position = s["pos"] + Vector2(-tag.size.x / 2.0, 22)
+		tag.position = s["pos"] + Vector2(-tag.size.x / 2.0, 16)
 
 
 func set_status(t: String) -> void:
@@ -431,23 +430,9 @@ func _place(c: Dictionary) -> void:
 	node.z_index = int(c["pos"].y)
 
 
-## Đường đi tránh nhà kính ở giữa sân.
-func _route(from: Vector2, to: Vector2) -> Array:
-	var c := _center() + Vector2(0, 14)
-	var avoid := Vector2(HOUSE_SIZE.x / 2.0 + 34, 58)
-	# đo khoảng cách gần nhất từ tâm tới đoạn thẳng (trong hệ elip đã chuẩn hóa)
-	var a := (from - c) / avoid
-	var b := (to - c) / avoid
-	var ab := b - a
-	var t := clampf(-a.dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
-	if (a + ab * t).length() >= 1.0:
-		return [to]
-	var ang_a := a.angle()
-	var ang_b := b.angle()
-	var diff := wrapf(ang_b - ang_a, -PI, PI)
-	var mid := ang_a + diff / 2.0
-	var way := c + Vector2(cos(mid), sin(mid)) * avoid * 1.25
-	return [way, to]
+## Đường đi tới chỗ cần đến (sân trống, đi thẳng).
+func _route(_from: Vector2, to: Vector2) -> Array:
+	return [to]
 
 
 func _walk_to(c: Dictionary, target: Vector2, goal: String) -> void:
@@ -996,15 +981,13 @@ func _draw() -> void:
 				Art.draw_decor(self, id, p, 1.0, anim)
 	# mái che quầy (phía sau người bán)
 	Art.draw_counter_back(self, _counter_desk(), gs.upgrade_tier("quay"), anim)
-	# gốc cây trưng bày
+	# bục trưng bày: chân đá kem, mặt gỗ, viền lá và hoa nhỏ (ảnh Gemini)
+	var k := STAND_W / STAND_TEX.get_width()
+	var sh := STAND_TEX.get_height() * k
 	for s in stands:
 		var p: Vector2 = s["pos"]
-		_ellipse(p + Vector2(0, 6), 46, 14, Color(0, 0, 0, 0.18))
-		draw_rect(Rect2(p.x - 36, p.y - 12, 72, 18), Color("8a5a2b"))
-		_ellipse(p + Vector2(0, 6), 36, 10, Color("6e4527"))
-		_ellipse(p + Vector2(0, -12), 36, 11, Color("c9955a"))
-		_ellipse(p + Vector2(0, -12), 24, 7, Color("b07a45"))
-		_ellipse(p + Vector2(0, -12), 12, 3.5, Color("c9955a"))
+		_ellipse(p + Vector2(0, sh - 22), STAND_W * 0.5, 12, Color(0, 0, 0, 0.2))
+		draw_texture_rect(STAND_TEX, Rect2(p.x - STAND_W / 2.0, p.y - 8 - STAND_TOP * k, STAND_W, sh), false)
 	# cây bụi trang trí
 	var bushes := [Vector2(40, h - 140), Vector2(w - 50, h - 160), Vector2(w - 70, TOP_H + 150), Vector2(90, h - BOTTOM_H - 20)]
 	for i in bushes.size():
@@ -1065,57 +1048,6 @@ func _stone(center: Vector2, rx: float, ry: float, rot: float, col: Color) -> vo
 		var k := 0.8 + 0.2 * sin(i * 2.3 + rot * 3.0)
 		pts.append(center + Vector2(cos(t) * rx * k, sin(t) * ry * k).rotated(rot * 0.3))
 	draw_colored_polygon(pts, col)
-
-
-## Nhà kính giữa sân. Chạm vào để về vườn.
-class GreenhouseBuilding extends Control:
-	signal tapped
-	var hover := false
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		mouse_entered.connect(func():
-			hover = true
-			queue_redraw())
-		mouse_exited.connect(func():
-			hover = false
-			queue_redraw())
-
-	func _gui_input(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			tapped.emit()
-			accept_event()
-
-	const TEX := preload("res://art/shop/nha_kinh.png")
-
-	func _has_point(p: Vector2) -> bool:
-		return Rect2(Vector2(10, 20), size - Vector2(20, 24)).has_point(p)
-
-	func _draw() -> void:
-		var w := size.x
-		var h := size.y
-		# bóng đổ trên sân
-		var sh := PackedVector2Array()
-		for i in 32:
-			var t := TAU * i / 32.0
-			sh.append(Vector2(w / 2.0 + cos(t) * w * 0.52, h - 8 + sin(t) * 13))
-		draw_colored_polygon(sh, Color(0, 0, 0, 0.2))
-		var th := w * TEX.get_height() / TEX.get_width()
-		draw_texture_rect(TEX, Rect2(0, h - th, w, th), false, Color(1.08, 1.08, 1.08) if hover else Color.WHITE)
-		# biển tên nhỏ trên mái, ngay trên cửa
-		var font := get_theme_default_font()
-		var t1 := "NHÀ KÍNH"
-		var tw := font.get_string_size(t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		var sign_r := Rect2(w * 0.6 - tw / 2 - 8, h - th * 0.585, tw + 16, 22)
-		draw_rect(sign_r, Color("3e7d4a") if not hover else Color("4f9a5a"))
-		draw_rect(sign_r, Color("d9b26a"), false, 2.0)
-		draw_string(font, Vector2(sign_r.position.x + 8, sign_r.position.y + 16), t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("fff1cf"))
-		if hover:
-			var t2 := "Chạm để về vườn"
-			var tw2 := font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-			draw_rect(Rect2(w / 2 - tw2 / 2 - 8, -22, tw2 + 16, 22), Color(0, 0, 0, 0.6))
-			draw_string(font, Vector2(w / 2 - tw2 / 2, -6), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
 
 ## Mặt trước quầy thu ngân, vẽ đè lên nửa dưới người bán.

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bkfg1oprkwdtq"
-path="res://.godot/imported/nha_kinh.png-472bf9d58e64038fc894d420df6ee55b.ctex"
+uid="uid://b4dy5fnavjaqb"
+path="res://.godot/imported/buc.png-14a012dd9e6ef5c666b20e997b47f6e9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/shop/nha_kinh.png"
-dest_files=["res://.godot/imported/nha_kinh.png-472bf9d58e64038fc894d420df6ee55b.ctex"]
+source_file="res://art/shop/buc.png"
+dest_files=["res://.godot/imported/buc.png-14a012dd9e6ef5c666b20e997b47f6e9.ctex"]
 
 [params]
 
