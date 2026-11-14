@@ -1,4 +1,5 @@
 extends Node
+const Data := preload("res://scripts/data.gd")
 ## Chụp Shop cây trước và sau khi mua đủ trang trí, cửa hàng trang trí, hộp đổi tên; thử chạm bảng hiệu.
 
 func _ready() -> void:
@@ -52,6 +53,19 @@ func _ready() -> void:
 		nur._spawn_customer()
 		for step in 40 + k * 30:
 			nur._update_customer(nur.customers[k], 0.05)
+	# một khách ra ghế đá ngồi nghỉ
+	var sitter: Dictionary = nur.customers[0]
+	var tries := 0
+	while not nur._wants_bench(sitter) and tries < 200:
+		tries += 1
+	nur.bench_user = sitter
+	sitter["rested"] = true
+	nur._walk_to(sitter, nur._bench_pos() + Vector2(0, -12), "bench")
+	for step in 400:
+		nur._update_customer(sitter, 0.05)
+		if sitter["state"] == "sit":
+			break
+	print("Khách ngồi ghế đá: ", sitter["state"], " | bench_user đúng: ", nur.bench_user == sitter)
 	await _shot(out + "/decor_full.png")
 	main._open_decor_shop()
 	await _shot(out + "/decor_shop.png")

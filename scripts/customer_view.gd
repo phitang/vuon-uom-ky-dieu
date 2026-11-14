@@ -31,6 +31,7 @@ var bubble := ""        # lời nói ngắn hiện trên đầu
 var bob := 0.0          # pha bước chân
 var walking := false
 var facing := 1.0
+var sitting := false    # ngồi trên ghế: thân hạ thấp, chỉ thấy cẳng chân (nhìn từ phía trước)
 var variant := "khach_xanh"
 var hd := false         # true: vẽ chân dung mượt có ánh sáng khối (màn hình trò chuyện ở quầy)
 
@@ -142,7 +143,16 @@ func _draw() -> void:
 	var src := Rect2(Vector2(_frame_index() * FRAME.x, 0), FRAME)
 	if use_hd:
 		src = Rect2(Vector2(_frame_index() * FRAME.x * HD_SCALE, 0), FRAME * HD_SCALE)
-	draw_texture_rect_region(tex, Rect2(origin, dsz), src)
+	if sitting and not use_hd:
+		# thân trên (hàng 0..44) hạ xuống 8 hàng, cẳng chân (hàng 50..64) giữ nguyên chỗ cũ
+		var drop := 8.0
+		draw_texture_rect_region(tex, Rect2(origin + Vector2(0, 50) * sc, Vector2(FRAME.x, 14) * sc),
+			Rect2(src.position + Vector2(0, 50), Vector2(FRAME.x, 14)))
+		draw_texture_rect_region(tex, Rect2(origin + Vector2(0, drop) * sc, Vector2(FRAME.x, 45) * sc),
+			Rect2(src.position, Vector2(FRAME.x, 45)))
+		origin.y += drop * sc
+	else:
+		draw_texture_rect_region(tex, Rect2(origin, dsz), src)
 	# đồ cầm theo loại khách
 	var px := func(x: float, y: float) -> Vector2: return origin + Vector2(x, y) * sc
 	match type:

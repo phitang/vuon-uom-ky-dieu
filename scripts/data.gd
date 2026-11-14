@@ -167,6 +167,7 @@ const GOLD_GUN_NEW_CHANCE := 0.4     # súng vàng: khả năng ưu tiên ra gi�
 const PRICE_MIN_PCT := 50
 const PRICE_MAX_PCT := 300
 const CUSTOMERS_PER_SALE := 5
+const BENCH_CHANCE := 0.22            # khả năng khách ra ghế đá ngồi nghỉ sau khi xem một cây (khi đã mua ghế đá)
 const MAX_STANDS := 15               # số gốc cây trưng bày trong Shop cây cảnh
 const SHOP_SPAWN_MIN := 4.0          # giây giữa hai lượt khách vào shop
 const SHOP_SPAWN_MAX := 8.0

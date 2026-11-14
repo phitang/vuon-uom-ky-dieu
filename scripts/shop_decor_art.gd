@@ -280,15 +280,42 @@ static func draw_counter_front(ci: CanvasItem, size: Vector2, tier: int, font: F
 ## "treo": pos là điểm treo phía trên (chuông gió).
 const DECOR_TEX := {
 	"den_long": [preload("res://art/shop/den_long.png"), 84.0, "day"],
-	"ghe_da": [preload("res://art/shop/ghe_da.png"), 50.0, "day"],
+	"ghe_da": [preload("res://art/shop/ghe_da.png"), 64.0, "day"],
 	"o_du": [preload("res://art/shop/o_du.png"), 92.0, "day"],
 	"bon_hoa": [preload("res://art/shop/bon_hoa.png"), 54.0, "day"],
 	"tuong": [preload("res://art/shop/tuong.png"), 70.0, "day"],
 	"coi_xay_gio": [preload("res://art/shop/coi_xay_gio.png"), 76.0, "day"],
-	"xich_du": [preload("res://art/shop/xich_du.png"), 80.0, "day"],
+	"xich_du": [preload("res://art/shop/xich_du.png"), 104.0, "day"],
 	"chuong_gio": [preload("res://art/shop/chuong_gio.png"), 54.0, "treo"],
 }
 const WINDMILL_HUB := Vector2(0.49, 0.38)   # vị trí trục cánh quạt trên ảnh cối xay (tỉ lệ)
+
+
+## Bóng đổ như nắng chiếu từ phía trước bên trái: hình bóng của chính đồ vật bị ép dẹt và
+## ngả về sau bên phải, cộng một vệt bóng đậm sát chân để đồ vật "chạm đất".
+const SHADOW := {   # id -> [độ dẹt, độ ngả, rộng vệt chân (theo bề rộng), độ đậm]
+	"xich_du": [0.32, -0.55, 0.5, 0.26],
+	"tuong": [0.3, -0.6, 0.42, 0.3],
+	"ghe_da": [0.3, -0.6, 0.46, 0.3],
+	"o_du": [0.28, -0.6, 0.3, 0.22],
+	"den_long": [0.25, -0.6, 0.15, 0.22],
+	"bon_hoa": [0.3, -0.5, 0.5, 0.25],
+	"coi_xay_gio": [0.3, -0.55, 0.45, 0.25],
+}
+
+
+static func _cast_shadow(ci: CanvasItem, id: String, tex: Texture2D, pos: Vector2, w: float, h: float, flip: bool) -> void:
+	var p: Array = SHADOW.get(id, [0.3, -0.55, 0.42, 0.22])
+	var sq: float = p[0]
+	var lean: float = p[1]
+	var col := Color(0.06, 0.12, 0.03, p[3])
+	# hình bóng: điểm (x, y) của ảnh (y âm là phía trên) -> (x + lean*y, sq*y)
+	var xf := Transform2D(Vector2(-1 if flip else 1, 0), Vector2(lean, sq), pos)
+	ci.draw_set_transform_matrix(xf)
+	ci.draw_texture_rect(tex, Rect2(Vector2(-w / 2.0, -h), Vector2(w, h)), false, col)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# vệt bóng sát chân
+	_ellipse(ci, pos + Vector2(0, -1), w * p[2], maxf(2.5, h * 0.035), Color(0.05, 0.08, 0.02, 0.22))
 
 
 ## flip: lật ngang (đèn lồng bên phải cổng quay vào trong).
@@ -301,7 +328,7 @@ static func draw_decor(ci: CanvasItem, id: String, pos: Vector2, s := 1.0, t := 
 	var w: float = h * tex.get_width() / tex.get_height()
 	var top_left := pos - Vector2(w / 2.0, h) if info[2] == "day" else pos - Vector2(w / 2.0, 0)
 	if info[2] == "day":
-		_ellipse(ci, pos, w * 0.42, maxf(3.0, h * 0.06), Color(0, 0, 0, 0.18))
+		_cast_shadow(ci, id, tex, pos, w, h, flip)
 	match id:
 		"den_long":   # ánh đèn lồng nhấp nháy sau lồng đèn
 			var lp := top_left + Vector2(w * (0.27 if flip else 0.73), h * 0.27)

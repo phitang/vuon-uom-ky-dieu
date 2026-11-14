@@ -46,6 +46,7 @@ var desk_front: Control       # mặt trước quầy (che nửa dưới ngườ
 var keeper: Control           # người bán
 var keeper_target := 0.0
 var keeper_wait := 0.0
+var bench_user = null         # khách đang ngồi ghế đá (nếu có)
 var sign_rect := Rect2()      # vùng bảng hiệu để bắt chạm
 
 # Khách ẩn. event: "" | "vip" (công tử ăn chơi) | "bao_ke" (đàn anh đòi tiền bảo kê)
@@ -217,6 +218,18 @@ func _update_keeper(delta: float) -> void:
 	keeper.queue_redraw()
 
 
+## Chân ghế đá (đồ trang trí) trên bãi cỏ bên trái sân.
+func _bench_pos() -> Vector2:
+	return Vector2(98, _center().y - 40)
+
+
+## Khách thường thỉnh thoảng ra ghế đá ngồi nghỉ (mỗi khách tối đa một lần, mỗi lúc một người).
+func _wants_bench(c: Dictionary) -> bool:
+	return gs.decor_owned.get("ghe_da", false) and bench_user == null and event == "" \
+		and c["role"] == "" and not c.get("rested", false) and not c["cust"].get("dan_anh", false) \
+		and not c["cust"].get("cong_tu", false) and randf() < Data.BENCH_CHANCE
+
+
 ## Chỗ khách đứng trước quầy.
 func _counter_spot() -> Vector2:
 	var d := _counter_desk()
@@ -276,6 +289,7 @@ func _clear_customers() -> void:
 	for c in customers:
 		c["node"].queue_free()
 	customers.clear()
+	bench_user = null
 	counter_busy = false
 	counter_claim = null
 	event = ""
@@ -481,6 +495,20 @@ func _update_customer(c: Dictionary, delta: float) -> void:
 			if c["timer"] <= 0.0:
 				node.bubble = ""
 				node.queue_redraw()
+				if _wants_bench(c):
+					bench_user = c
+					c["rested"] = true
+					_walk_to(c, _bench_pos() + Vector2(0, -12), "bench")
+				else:
+					_go_next_stand(c)
+		"sit":      # ngồi nghỉ trên ghế đá rồi đi xem tiếp
+			c["timer"] -= delta
+			if c["timer"] < 2.0 and node.bubble != "":
+				node.bubble = ""
+				node.queue_redraw()
+			if c["timer"] <= 0.0:
+				node.sitting = false
+				bench_user = null
 				_go_next_stand(c)
 		"queue":
 			if (event == "" or event == "vip2") and not counter_busy and counter_claim == null:
@@ -501,6 +529,13 @@ func _update_customer(c: Dictionary, delta: float) -> void:
 func _arrive(c: Dictionary) -> void:
 	var node: Control = c["node"]
 	match c["goal"]:
+		"bench":
+			c["state"] = "sit"
+			c["timer"] = randf_range(6.0, 10.0)
+			node.sitting = true
+			node.facing = 1.0
+			node.bubble = ["Nghỉ chân chút…", "Mát quá!", "Ghế đẹp ghê"].pick_random()
+			node.set_mood(1)
 		"stand":
 			c["state"] = "look"
 			c["timer"] = randf_range(1.6, 3.0)
@@ -970,7 +1005,7 @@ func _draw() -> void:
 	# đồ trang trí trên cỏ
 	var spots := {
 		"bon_hoa": [Vector2(w * 0.22, fy + 50), Vector2(w * 0.84, fy + 50)],
-		"ghe_da": [Vector2(98, c.y - 40)],
+		"ghe_da": [_bench_pos()],
 		"xich_du": [Vector2(100, c.y + 80)],
 		"tuong": [Vector2(w - 50, c.y - 60)],
 		"o_du": [Vector2(w - 55, c.y + 66)],
