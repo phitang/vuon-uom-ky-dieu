@@ -19,7 +19,12 @@ signal special_requested(customer: Dictionary)   # khách ẩn (công tử / b�
 const TOP_H := 56.0
 const BOTTOM_H := 64.0
 const CUST_SIZE := Vector2(64, 128)
-const HOUSE_SIZE := Vector2(300, 196)
+const HOUSE_SIZE := Vector2(236, 240)
+# Ảnh vẽ bằng Gemini (phong cách anime): cảnh nền trời-đồi-cỏ, sân lát đá, nhà kính, bụi hoa
+const BG_TEX := preload("res://art/shop/canh_nen.jpg")
+const BG_HORIZON := 533.0          # hàng điểm ảnh nơi đồi chạm bãi cỏ trong canh_nen.jpg
+const PAVE_TEX := preload("res://art/shop/san_da.jpg")
+const BUSH_TEX := [preload("res://art/shop/bui_0.png"), preload("res://art/shop/bui_1.png"), preload("res://art/shop/bui_2.png")]
 
 var gs: Node
 var paused_check: Callable = Callable()   # trả về true khi đang có bảng bật lên
@@ -949,14 +954,12 @@ func _draw() -> void:
 	var h := size.y
 	var c := _center()
 	var r := _radii()
-	# trời và đồi
-	draw_rect(Rect2(0, 0, w, h), Color("6fb35a"))
-	draw_rect(Rect2(0, TOP_H, w, 70), Color("a9dcf0"))
-	for i in 5:
-		var hx := w * (i / 4.0)
-		_ellipse(Vector2(hx, TOP_H + 92), 260, 60, Color("7cc063").darkened(0.05 * (i % 2)))
-	draw_circle(Vector2(w - 90, TOP_H + 28), 26, Color("ffe27a"))
-	draw_rect(Rect2(0, TOP_H + 92, w, h), Color("6fb35a"))
+	# trời, đồi và bãi cỏ: một ảnh nền, đường chân đồi nằm ngay dưới hàng rào
+	var fy0 := _gate().y - 22
+	var bs := w / BG_TEX.get_width()
+	var top := fy0 + 30.0 - BG_HORIZON * bs
+	draw_rect(Rect2(0, 0, w, h), Color("4aa6e0"))
+	draw_texture_rect(BG_TEX, Rect2(0, top, w, BG_TEX.get_height() * bs), false)
 	# cối xay gió trên đồi (sau hàng rào)
 	var fy := _gate().y - 22
 	if gs.decor_owned.get("coi_xay_gio", false):
@@ -974,19 +977,11 @@ func _draw() -> void:
 	# lối đi từ cổng
 	var path := PackedVector2Array([_gate() + Vector2(-46, -10), _gate() + Vector2(46, -10),
 		Vector2(c.x + 60, c.y - r.y + 10), Vector2(c.x - 60, c.y - r.y + 10)])
-	draw_colored_polygon(path, Color("b7b4aa"))
-	# sân lát đá
-	_ellipse(c, r.x + 16, r.y + 14, Color("8f8c84"))
-	_ellipse(c, r.x, r.y, Color("b7b4aa"))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	for i in 260:
-		var p := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1))
-		if p.length() > 0.97:
-			continue
-		var q := c + Vector2(p.x * r.x, p.y * r.y)
-		var col := Color("c9c6bc") if rng.randf() < 0.5 else Color("a8a59c")
-		_stone(q, rng.randf_range(12, 22), rng.randf_range(7, 12), rng.randf() * PI, col)
+	_paved(path)
+	# sân lát đá (ảnh đá cuội tròn ép theo hình bầu dục), viền bóng mềm
+	_ellipse(c + Vector2(0, 6), r.x + 22, r.y + 18, Color(0.18, 0.28, 0.1, 0.22))
+	_ellipse(c, r.x + 14, r.y + 12, Color("8d8576"))
+	_paved_ellipse(c, r.x, r.y)
 	# đồ trang trí trên cỏ
 	var spots := {
 		"bon_hoa": [Vector2(w * 0.22, fy + 50), Vector2(w * 0.84, fy + 50)],
@@ -1011,13 +1006,14 @@ func _draw() -> void:
 		_ellipse(p + Vector2(0, -12), 24, 7, Color("b07a45"))
 		_ellipse(p + Vector2(0, -12), 12, 3.5, Color("c9955a"))
 	# cây bụi trang trí
-	for b in [Vector2(40, h - 140), Vector2(w - 50, h - 160), Vector2(w - 70, TOP_H + 150), Vector2(90, h - BOTTOM_H - 20), Vector2(w * 0.5, h - BOTTOM_H - 6)]:
-		_ellipse(b + Vector2(0, 10), 52, 16, Color(0, 0, 0, 0.15))
-		draw_circle(b, 34, Color("3f8a3a"))
-		draw_circle(b + Vector2(-20, 6), 26, Color("4f9a45"))
-		draw_circle(b + Vector2(22, 4), 24, Color("468f3f"))
-		for i in 4:
-			draw_circle(b + Vector2(-18 + i * 12, -10 + (i % 2) * 14), 4, [Color("f2a7c3"), Color("f6d55c"), Color("ffffff"), Color("e2453c")][i])
+	var bushes := [Vector2(40, h - 140), Vector2(w - 50, h - 160), Vector2(w - 70, TOP_H + 150), Vector2(90, h - BOTTOM_H - 20)]
+	for i in bushes.size():
+		var b: Vector2 = bushes[i]
+		var tex: Texture2D = BUSH_TEX[i % BUSH_TEX.size()]
+		var bw := 112.0
+		var bh := bw * tex.get_height() / tex.get_width()
+		_ellipse(b + Vector2(0, 26), 52, 13, Color(0, 0, 0, 0.18))
+		draw_texture_rect(tex, Rect2(b.x - bw / 2.0, b.y + 30 - bh, bw, bh), false)
 
 
 ## Có món nào cần vẽ lại liên tục (đèn nhấp nháy, cối xay quay...) không.
@@ -1042,6 +1038,24 @@ func _ellipse(center: Vector2, rx: float, ry: float, col: Color) -> void:
 		var t := TAU * i / 40.0
 		pts.append(center + Vector2(cos(t) * rx, sin(t) * ry))
 	draw_colored_polygon(pts, col)
+
+
+## Đa giác lát đá: ảnh sân đá trải theo hình bầu dục của sân (giữa ảnh = giữa sân).
+func _paved(pts: PackedVector2Array) -> void:
+	var c := _center()
+	var r := _radii()
+	var uvs := PackedVector2Array()
+	for p in pts:
+		uvs.append(Vector2(0.5 + (p.x - c.x) / (2.0 * r.x), 0.5 + (p.y - c.y) / (2.0 * r.y)))
+	draw_colored_polygon(pts, Color.WHITE, uvs, PAVE_TEX)
+
+
+func _paved_ellipse(center: Vector2, rx: float, ry: float) -> void:
+	var pts := PackedVector2Array()
+	for i in 64:
+		var t := TAU * i / 64.0
+		pts.append(center + Vector2(cos(t) * rx, sin(t) * ry))
+	_paved(pts)
 
 
 func _stone(center: Vector2, rx: float, ry: float, rot: float, col: Color) -> void:
@@ -1073,86 +1087,35 @@ class GreenhouseBuilding extends Control:
 			tapped.emit()
 			accept_event()
 
-	func _has_point(p: Vector2) -> bool:
-		return Rect2(Vector2(14, 20), Vector2(272, 168)).has_point(p)
+	const TEX := preload("res://art/shop/nha_kinh.png")
 
-	func _poly(pts: Array, col: Color) -> void:
-		draw_colored_polygon(PackedVector2Array(pts), col)
+	func _has_point(p: Vector2) -> bool:
+		return Rect2(Vector2(10, 20), size - Vector2(20, 24)).has_point(p)
 
 	func _draw() -> void:
-		var glass := Color(0.78, 0.92, 0.95, 0.55)
-		var frame := Color("f4f1e8")
-		var frame_dark := Color("b9b4a6")
-		# bóng
+		var w := size.x
+		var h := size.y
+		# bóng đổ trên sân
 		var sh := PackedVector2Array()
 		for i in 32:
 			var t := TAU * i / 32.0
-			sh.append(Vector2(150 + cos(t) * 150, 186 + sin(t) * 12))
-		draw_colored_polygon(sh, Color(0, 0, 0, 0.18))
-		# mặt bên (chiều sâu)
-		_poly([Vector2(250, 92), Vector2(284, 74), Vector2(284, 160), Vector2(250, 178)], Color(0.62, 0.78, 0.82, 0.8))
-		_poly([Vector2(236, 30), Vector2(270, 14), Vector2(284, 74), Vector2(250, 92)], Color(0.7, 0.86, 0.9, 0.8))
-		# cây bên trong
-		var leaves := [Color("3f8a3a"), Color("4f9a45"), Color("5fae55")]
-		for i in 9:
-			var x := 34.0 + i * 25.0
-			draw_circle(Vector2(x, 150 - (i % 3) * 10), 17, leaves[i % 3])
-		for i in 7:
-			var x := 44.0 + i * 31.0
-			draw_circle(Vector2(x, 128 + (i % 2) * 8), 13, leaves[(i + 1) % 3])
-		var petals := [Color("f2a7c3"), Color("f6d55c"), Color("e2453c"), Color("9b6bd6"), Color("ffffff")]
-		for i in 12:
-			var x := 34.0 + i * 19.0
-			draw_circle(Vector2(x, 118 + (i * 7) % 26), 4.5, petals[i % petals.size()])
-		# chậu và bàn trồng bên trong
-		draw_rect(Rect2(28, 160, 220, 10), Color("8a5a2b"))
-		# tường kính phía trước
-		draw_rect(Rect2(22, 92, 228, 86), glass)
-		draw_rect(Rect2(22, 92, 228, 30), Color(1, 1, 1, 0.18))
-		# mái kính
-		_poly([Vector2(12, 94), Vector2(260, 94), Vector2(236, 30), Vector2(36, 30)], Color(0.82, 0.94, 0.97, 0.75))
-		_poly([Vector2(36, 30), Vector2(236, 30), Vector2(150, 8)], Color(0.88, 0.96, 0.98, 0.85))
-		# khung mái
-		for i in 8:
-			var t := i / 7.0
-			draw_line(Vector2(lerpf(12, 260, t), 94), Vector2(lerpf(36, 236, t), 30), frame, 3.0)
-		draw_line(Vector2(12, 94), Vector2(260, 94), frame, 5.0)
-		draw_line(Vector2(36, 30), Vector2(236, 30), frame, 4.0)
-		draw_line(Vector2(36, 30), Vector2(150, 8), frame, 4.0)
-		draw_line(Vector2(236, 30), Vector2(150, 8), frame, 4.0)
-		draw_line(Vector2(236, 30), Vector2(270, 14), frame, 3.0)
-		draw_line(Vector2(260, 94), Vector2(284, 74), frame, 3.0)
-		draw_line(Vector2(270, 14), Vector2(284, 74), frame, 3.0)
-		# khung tường
-		for i in 7:
-			var x := lerpf(22, 250, i / 6.0)
-			draw_line(Vector2(x, 92), Vector2(x, 178), frame, 4.0)
-		draw_line(Vector2(22, 134), Vector2(250, 134), frame, 3.0)
-		draw_line(Vector2(284, 74), Vector2(284, 160), frame, 3.0)
-		draw_line(Vector2(250, 178), Vector2(284, 160), frame, 3.0)
-		# chân tường đá
-		draw_rect(Rect2(18, 170, 236, 14), Color("9c978b"))
-		draw_rect(Rect2(18, 170, 236, 4), Color("b9b4a6"))
-		_poly([Vector2(254, 170), Vector2(288, 152), Vector2(288, 166), Vector2(254, 184)], Color("847f74"))
-		# cửa
-		draw_rect(Rect2(116, 112, 48, 66), Color(0.55, 0.75, 0.8, 0.85))
-		draw_rect(Rect2(116, 112, 48, 66), frame_dark, false, 4.0)
-		draw_line(Vector2(140, 112), Vector2(140, 178), frame_dark, 3.0)
-		draw_circle(Vector2(134, 148), 3, Color("d9b26a"))
-		draw_circle(Vector2(146, 148), 3, Color("d9b26a"))
-		# biển tên
-		var sign_r := Rect2(92, 52, 116, 26)
-		draw_rect(sign_r, Color("3e7d4a") if not hover else Color("4f9a5a"))
-		draw_rect(sign_r, Color("d9b26a"), false, 2.5)
+			sh.append(Vector2(w / 2.0 + cos(t) * w * 0.52, h - 8 + sin(t) * 13))
+		draw_colored_polygon(sh, Color(0, 0, 0, 0.2))
+		var th := w * TEX.get_height() / TEX.get_width()
+		draw_texture_rect(TEX, Rect2(0, h - th, w, th), false, Color(1.08, 1.08, 1.08) if hover else Color.WHITE)
+		# biển tên nhỏ trên mái, ngay trên cửa
 		var font := get_theme_default_font()
 		var t1 := "NHÀ KÍNH"
-		var tw := font.get_string_size(t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-		draw_string(font, Vector2(150 - tw / 2, 71), t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("fff1cf"))
+		var tw := font.get_string_size(t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var sign_r := Rect2(w * 0.6 - tw / 2 - 8, h - th * 0.585, tw + 16, 22)
+		draw_rect(sign_r, Color("3e7d4a") if not hover else Color("4f9a5a"))
+		draw_rect(sign_r, Color("d9b26a"), false, 2.0)
+		draw_string(font, Vector2(sign_r.position.x + 8, sign_r.position.y + 16), t1, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("fff1cf"))
 		if hover:
 			var t2 := "Chạm để về vườn"
 			var tw2 := font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-			draw_rect(Rect2(150 - tw2 / 2 - 8, -22, tw2 + 16, 22), Color(0, 0, 0, 0.6))
-			draw_string(font, Vector2(150 - tw2 / 2, -6), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+			draw_rect(Rect2(w / 2 - tw2 / 2 - 8, -22, tw2 + 16, 22), Color(0, 0, 0, 0.6))
+			draw_string(font, Vector2(w / 2 - tw2 / 2, -6), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
 
 ## Mặt trước quầy thu ngân, vẽ đè lên nửa dưới người bán.
