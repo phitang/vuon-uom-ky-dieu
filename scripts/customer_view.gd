@@ -255,12 +255,46 @@ func _draw_anime(tex: Texture2D) -> void:
 		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y, dsz.x, dsz.y * up), Rect2(0, 0, ts.x, ts.y * up))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		top_y = feet.y + y
+	elif walking:
+		_draw_walk(tex, ts, dsz, feet - Vector2(0, lift), ang * 0.5, flip)
 	else:
 		draw_set_transform(feet - Vector2(0, lift), ang, flip)
 		draw_texture_rect(tex, Rect2(-dsz.x / 2.0, -dsz.y, dsz.x, dsz.y), false)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if bubble != "" and not hd:
 		_draw_bubble(top_y)
+
+
+## Chỗ tách chân khỏi thân (tỉ lệ chiều cao ảnh). Váy dài thì tách ở mép váy.
+const LEG_SPLIT := {"khach_tim": 0.74, "be_gai": 0.7, "ban_hang": 0.78, "be_trai": 0.56}
+
+
+## Bước đi: hai chân (nửa trái, nửa phải của phần dưới ảnh) đung đưa ngược chiều quanh hông,
+## chân bước lên co ngắn lại như nhấc gối; thân trên vẽ đè lên để che chỗ nối.
+func _draw_walk(tex: Texture2D, ts: Vector2, dsz: Vector2, base: Vector2, ang: float, flip: Vector2) -> void:
+	var hip: float = LEG_SPLIT.get(variant, 0.52)
+	var leg_h := dsz.y * (1.0 - hip)
+	var hip_y := -dsz.y + dsz.y * hip
+	var ph := sin(bob)
+	var xf := Transform2D(ang, base) * Transform2D(0.0, flip, 0.0, Vector2.ZERO)
+	# luân phiên nhấc từng chân: chân nhấc co lên (gối gập) và hơi đưa ra; thân dồn về chân trụ
+	var lifted := 1.0 if ph > 0 else -1.0
+	xf = xf * Transform2D(0.0, Vector2(-lifted * absf(ph) * dsz.x * 0.03, 0))
+	var order := [lifted, -lifted]
+	for side in order:
+		var up: float = absf(ph) if side == lifted else 0.0
+		var a: float = side * 0.16 * up
+		var lift_k := 1.0 - 0.22 * up
+		var pivot := Vector2(side * dsz.x / 4.0, hip_y)
+		var leg := xf * Transform2D(a, Vector2(1.0, lift_k), 0.0, pivot)
+		draw_set_transform_matrix(leg)
+		var src := Rect2(ts.x / 2.0 if side > 0 else 0.0, ts.y * hip, ts.x / 2.0, ts.y * (1.0 - hip))
+		draw_texture_rect_region(tex, Rect2(-dsz.x / 4.0, 0, dsz.x / 2.0, leg_h), src)
+	# thân trên (phủ xuống quá hông một chút)
+	var over := 0.03
+	draw_set_transform_matrix(xf)
+	draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, -dsz.y, dsz.x, dsz.y * (hip + over)), Rect2(0, 0, ts.x, ts.y * (hip + over)))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_bubble(head_y: float) -> void:
