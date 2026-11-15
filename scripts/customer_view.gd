@@ -108,6 +108,16 @@ static func _anime(id: String) -> Texture2D:
 	return _tex[key]
 
 
+## Dải 4 tư thế bước đi nhìn nghiêng (mặt hướng sang phải): art/nhan_vat/<mã>_di.png.
+## Nhân vật chưa có dải này thì dùng hình đứng và cử động hai chân bằng code.
+static func _walk_sheet(id: String) -> Texture2D:
+	var key := "di:" + id
+	if not _tex.has(key):
+		var path := "res://art/nhan_vat/%s_di.png" % id
+		_tex[key] = load(path) if ResourceLoader.exists(path) else null
+	return _tex[key]
+
+
 static func _hd_sheet(id: String) -> Texture2D:
 	var key := "hd:" + id
 	if not _tex.has(key):
@@ -255,6 +265,16 @@ func _draw_anime(tex: Texture2D) -> void:
 		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y, dsz.x, dsz.y * up), Rect2(0, 0, ts.x, ts.y * up))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		top_y = feet.y + y
+	elif walking and _walk_sheet(variant) != null:
+		var sheet := _walk_sheet(variant)
+		var fw := sheet.get_width() / 4.0
+		var fi := int(floor(bob / (PI / 2.0))) % 4
+		var fsz := Vector2(fw, sheet.get_height()) * k
+		var bounce := absf(cos(bob * 2.0)) * fsz.y * 0.01
+		draw_set_transform(feet - Vector2(0, bounce), 0.0, flip)
+		draw_texture_rect_region(sheet, Rect2(-fsz.x / 2.0, -fsz.y, fsz.x, fsz.y), Rect2(fi * fw, 0, fw, sheet.get_height()))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		top_y = feet.y - fsz.y
 	elif walking:
 		_draw_walk(tex, ts, dsz, feet - Vector2(0, lift), ang * 0.5, flip)
 	else:
