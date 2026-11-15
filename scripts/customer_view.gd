@@ -99,7 +99,7 @@ static func _real(id: String, p_mood: int) -> Texture2D:
 
 
 ## Nhân vật 2D phong cách anime (vẽ bằng Gemini): art/nhan_vat/<mã>.png, toàn thân, đứng thẳng.
-## Có ảnh này thì dùng cho cả lúc đi trong shop lẫn khung trò chuyện ở quầy.
+## Chỉ dùng khi đi trong shop; khung trò chuyện ở quầy vẫn dùng chân dung art/khach_that.
 static func _anime(id: String) -> Texture2D:
 	var key := "anime:" + id
 	if not _tex.has(key):
@@ -127,7 +127,8 @@ func _frame_index() -> int:
 
 
 func _draw() -> void:
-	var anime := _anime(variant)
+	# nhân vật anime chỉ dùng khi đi trong shop; khung trò chuyện ở quầy giữ chân dung cũ
+	var anime := _anime(variant) if not hd else null
 	if anime != null:
 		_draw_anime(anime)
 		return
