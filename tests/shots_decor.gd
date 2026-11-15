@@ -60,7 +60,7 @@ func _ready() -> void:
 		tries += 1
 	nur.bench_user = sitter
 	sitter["rested"] = true
-	nur._walk_to(sitter, nur._bench_pos() + Vector2(0, -12), "bench")
+	nur._walk_to(sitter, nur._bench_pos() + Vector2(0, 4), "bench")
 	for step in 400:
 		nur._update_customer(sitter, 0.05)
 		if sitter["state"] == "sit":

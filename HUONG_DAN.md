@@ -123,6 +123,7 @@ Dữ liệu lưu ở `user://save.json` (trên điện thoại nằm trong bộ 
 
 ## 6. Những gì đã có
 
+- Khách hàng và cô bán hoa là nhân vật 2D phong cách anime (vẽ bằng Gemini) trong `art/nhan_vat/<mã>.png`, dùng cả khi đi trong shop lẫn trong khung trò chuyện ở quầy. Ảnh gốc chưa tách nền ở `art/nhan_vat_goc/`. Xóa ảnh của nhân vật nào thì nhân vật đó quay về hình cũ.
 - Shop cây dùng ảnh vẽ bằng Gemini (phong cách anime) trong `art/shop/`: cảnh nền trời, đồi, bãi cỏ (`canh_nen.jpg`), sân lát đá (`san_da.jpg`), bục trưng bày (`buc.png`), 3 bụi hoa (`bui_0..2.png`) và 8 món trang trí (`chuong_gio`, `den_long`, `bon_hoa`, `ghe_da`, `o_du`, `xich_du`, `tuong`, `coi_xay_gio`; cánh cối xay vẽ bằng code để quay được). Đồ trang trí có bóng đổ ngả theo nắng; có ghế đá thì thỉnh thoảng khách ra ngồi nghỉ (`BENCH_CHANCE` trong data.gd). Ảnh gốc chưa tách nền nằm trong `art/shop_goc/`. Muốn đổi thì thay file cùng tên.
 - Màn hình chính khi vào game (ảnh nền `art/man_hinh_chinh.png`, nhạc Garden of Whispers): Tiếp tục chơi, Cách chơi, Tùy chỉnh âm thanh, Chơi lại từ đầu (hỏi lại Đồng ý / Từ chối), Thoát game (bản web không có nút này vì trình duyệt không cho game tự đóng). Trong game, Menu có Tiếp tục chơi, Cách chơi, nhạc nền / âm lượng và nút "Màn hình chính" để quay lại.
 - Cây lớn theo đồng hồ thật, cả khi tắt game (tối đa tính 7 ngày), bảng "Trong lúc bạn vắng mặt".

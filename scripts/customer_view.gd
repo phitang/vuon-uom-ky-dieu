@@ -98,6 +98,16 @@ static func _real(id: String, p_mood: int) -> Texture2D:
 	return null
 
 
+## Nhân vật 2D phong cách anime (vẽ bằng Gemini): art/nhan_vat/<mã>.png, toàn thân, đứng thẳng.
+## Có ảnh này thì dùng cho cả lúc đi trong shop lẫn khung trò chuyện ở quầy.
+static func _anime(id: String) -> Texture2D:
+	var key := "anime:" + id
+	if not _tex.has(key):
+		var path := "res://art/nhan_vat/%s.png" % id
+		_tex[key] = load(path) if ResourceLoader.exists(path) else null
+	return _tex[key]
+
+
 static func _hd_sheet(id: String) -> Texture2D:
 	var key := "hd:" + id
 	if not _tex.has(key):
@@ -117,6 +127,10 @@ func _frame_index() -> int:
 
 
 func _draw() -> void:
+	var anime := _anime(variant)
+	if anime != null:
+		_draw_anime(anime)
+		return
 	if hd and not walking:
 		var real := _real(variant, mood)
 		if real != null:
@@ -185,6 +199,85 @@ func _draw() -> void:
 			var tip := PackedVector2Array([Vector2(cx - 5, r.end.y), Vector2(cx + 5, r.end.y), Vector2(cx, r.end.y + 7)])
 			draw_colored_polygon(tip, Color(1, 1, 1, 0.95))
 		draw_string(font, Vector2(r.position.x + 8, r.position.y + 19), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3a2614"))
+
+
+const ANIME_REF_H := 520.0   # chiều cao ảnh của người lớn trong art/nhan_vat (trẻ em thấp hơn)
+
+
+## Vẽ nhân vật anime: đứng sát đáy khung; đi thì nhún và lắc nhẹ; ngồi thì hạ thân, giấu đùi.
+func _draw_anime(tex: Texture2D) -> void:
+	var ts := tex.get_size()
+	if hd:
+		# khung trò chuyện: lấy từ đầu xuống giữa đùi cho gương mặt to, rõ
+		var part := Rect2(0, 0, ts.x, ts.y * 0.6)
+		var kk: float = minf(size.y / part.size.y, size.x * 0.98 / part.size.x)
+		if variant.begins_with("be_"):
+			kk *= 0.85
+		var psz := part.size * kk
+		var dst := Rect2((size.x - psz.x) / 2.0, size.y - psz.y, psz.x, psz.y)
+		if facing < 0:
+			draw_set_transform(Vector2(size.x, 0), 0.0, Vector2(-1, 1))
+		draw_texture_rect_region(tex, dst, part)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	var k: float = size.y * 0.97 / ANIME_REF_H
+	if hd:
+		k = minf(k, size.x * 0.95 / ts.x)
+	var dsz := ts * k
+	var feet := Vector2(size.x / 2.0, size.y - 2.0)
+	# bóng dưới chân
+	var sh := PackedVector2Array()
+	for i in 20:
+		var t := TAU * i / 20.0
+		sh.append(feet + Vector2(cos(t) * dsz.x * 0.42, sin(t) * maxf(2.5, dsz.y * 0.025)))
+	draw_colored_polygon(sh, Color(0, 0, 0, 0.22))
+	var lift := 0.0
+	var ang := 0.0
+	if walking:
+		lift = absf(sin(bob)) * dsz.y * 0.025
+		ang = sin(bob) * 0.035
+	var flip := Vector2(-1 if facing < 0 else 1, 1)
+	var top_y := feet.y - dsz.y - lift
+	if sitting:
+		# nhìn từ phía trước: cẳng chân thẳng đứng, đùi chĩa về phía người xem (ép ngắn lại), thân trên hạ xuống
+		var shin := 0.22
+		var thigh := 0.06
+		var up := 0.56
+		draw_set_transform(feet, 0.0, flip)
+		var y := -dsz.y * shin
+		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y, dsz.x, dsz.y * shin), Rect2(0, ts.y * (1.0 - shin), ts.x, ts.y * shin))
+		y -= dsz.y * thigh
+		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y, dsz.x, dsz.y * thigh), Rect2(0, ts.y * up, ts.x, ts.y * (1.0 - shin - up)))
+		# nếp gấp ở đầu gối và bóng dưới đùi cho thấy đang ngồi
+		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y + dsz.y * thigh, dsz.x, dsz.y * 0.035), Rect2(0, ts.y * (1.0 - shin), ts.x, ts.y * 0.03), Color(0.35, 0.3, 0.3, 0.55))
+		y -= dsz.y * up
+		draw_texture_rect_region(tex, Rect2(-dsz.x / 2.0, y, dsz.x, dsz.y * up), Rect2(0, 0, ts.x, ts.y * up))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		top_y = feet.y + y
+	else:
+		draw_set_transform(feet - Vector2(0, lift), ang, flip)
+		draw_texture_rect(tex, Rect2(-dsz.x / 2.0, -dsz.y, dsz.x, dsz.y), false)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if bubble != "" and not hd:
+		_draw_bubble(top_y)
+
+
+func _draw_bubble(head_y: float) -> void:
+	var font := get_theme_default_font()
+	var fs := 15
+	var tw := font.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var cx := size.x / 2.0
+	var r := Rect2(cx - tw / 2 - 8, head_y - 34, tw + 16, 26)
+	var top_limit := BUBBLE_TOP - global_position.y
+	var lowered := r.position.y < top_limit
+	if lowered:
+		r.position.y = top_limit
+	draw_rect(r, Color(1, 1, 1, 0.95))
+	draw_rect(r, Color(0.3, 0.3, 0.3, 0.6), false, 1.5)
+	if not lowered:
+		var tip := PackedVector2Array([Vector2(cx - 5, r.end.y), Vector2(cx + 5, r.end.y), Vector2(cx, r.end.y + 7)])
+		draw_colored_polygon(tip, Color(1, 1, 1, 0.95))
+	draw_string(font, Vector2(r.position.x + 8, r.position.y + 19), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3a2614"))
 
 
 ## Vẽ chân dung thật vừa khung, đứng sát đáy, có bóng dưới chân.

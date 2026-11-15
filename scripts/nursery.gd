@@ -18,7 +18,8 @@ signal special_requested(customer: Dictionary)   # khách ẩn (công tử / b�
 
 const TOP_H := 56.0
 const BOTTOM_H := 64.0
-const CUST_SIZE := Vector2(64, 128)
+const CUST_SIZE := Vector2(84, 168)
+const KEEPER_SIZE := Vector2(70, 136)     # cô bán hoa sau quầy (nhỏ hơn chút để đầu không lẫn vào thanh trên)
 # Ảnh vẽ bằng Gemini (phong cách anime): cảnh nền trời-đồi-cỏ, sân lát đá, bục trưng bày, bụi hoa
 const BG_TEX := preload("res://art/shop/canh_nen.jpg")
 const BG_HORIZON := 533.0          # hàng điểm ảnh nơi đồi chạm bãi cỏ trong canh_nen.jpg
@@ -74,7 +75,7 @@ func _ready() -> void:
 	add_child(layer)
 	keeper = Control.new()
 	keeper.set_script(CustomerView)
-	keeper.size = CUST_SIZE
+	keeper.size = KEEPER_SIZE
 	keeper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(keeper)
 	keeper.setup("nguoi_ban", 1)
@@ -186,7 +187,7 @@ func _layout_props() -> void:
 		keeper_target = d.position.x + d.size.x * 0.45
 		keeper.set_meta("x", keeper_target)
 	var kx: float = keeper.get_meta("x", keeper_target)
-	keeper.position = Vector2(kx - CUST_SIZE.x / 2.0, feet_y - CUST_SIZE.y)
+	keeper.position = Vector2(kx - KEEPER_SIZE.x / 2.0, feet_y - KEEPER_SIZE.y)
 	keeper.z_index = int(feet_y) - 10
 
 
@@ -498,7 +499,7 @@ func _update_customer(c: Dictionary, delta: float) -> void:
 				if _wants_bench(c):
 					bench_user = c
 					c["rested"] = true
-					_walk_to(c, _bench_pos() + Vector2(0, -12), "bench")
+					_walk_to(c, _bench_pos() + Vector2(0, 4), "bench")
 				else:
 					_go_next_stand(c)
 		"sit":      # ngồi nghỉ trên ghế đá rồi đi xem tiếp
