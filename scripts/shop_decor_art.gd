@@ -196,35 +196,61 @@ static func draw_fence(ci: CanvasItem, w: float, fy: float, gate_x: float, tier:
 # =====================================================================
 # Quầy: phần phía sau người bán (mái che) và mặt trước quầy
 # =====================================================================
+## Độ cao mái che tính từ mặt quầy (cao hơn đầu cô bán hoa đứng sau quầy).
+const ROOF_H := 124.0
+
+
 static func draw_counter_back(ci: CanvasItem, d: Rect2, tier: int, t := 0.0) -> void:
-	if tier <= 0:
-		return
-	var top := d.position.y - 84
-	for x in [d.position.x + 6, d.end.x - 12]:
-		ci.draw_rect(Rect2(x, top + 18, 6, d.position.y - top - 18), Color("6e4527") if tier < 3 else Color("8a6a2a"))
+	var top := d.position.y - ROOF_H
+	var x0 := d.position.x - 14
+	var x1 := d.end.x + 14
+	var ww := x1 - x0
+	# hai cột gỗ cao đỡ mái, có dây leo hoa quấn quanh
+	var post_col := Color("6e4527") if tier < 3 else Color("8a6a2a")
+	for x in [d.position.x + 4, d.end.x - 12]:
+		ci.draw_rect(Rect2(x, top + 14, 8, d.position.y - top - 14), post_col)
+		ci.draw_rect(Rect2(x, top + 14, 3, d.position.y - top - 14), post_col.lightened(0.18))
+		for k in 5:
+			var y := top + 34 + k * 20.0
+			ci.draw_circle(Vector2(x + 4 + (4 if k % 2 == 0 else -4), y), 4.5, Color("4f9a45"))
+			ci.draw_circle(Vector2(x + 4 + (4 if k % 2 == 0 else -4), y - 2), 2.2, [Color("f2a7c3"), Color("f6d55c"), Color("ffffff")][k % 3])
 	match tier:
-		1:
-			for i in 8:
-				var col := Color("3e8a4a") if i % 2 == 0 else Color("f4f1ea")
-				var x0 := d.position.x - 10 + i * (d.size.x + 20) / 8.0
-				ci.draw_colored_polygon(PackedVector2Array([Vector2(x0, top), Vector2(x0 + (d.size.x + 20) / 8.0, top), Vector2(x0 + (d.size.x + 20) / 8.0, top + 22), Vector2(x0, top + 22)]), col)
-				ci.draw_circle(Vector2(x0 + (d.size.x + 20) / 16.0, top + 22), (d.size.x + 20) / 16.0, col)
+		0, 1:
+			# mái vải dốc ra trước, mép lượn sóng (bậc 0: vải kem trơn, bậc 1: sọc xanh trắng)
+			var back_y := top
+			var front_y := top + 26
+			var n := 8
+			for i in n:
+				var xa := x0 + ww * i / n
+				var xb := x0 + ww * (i + 1) / n
+				var col := Color("efe3c4") if tier == 0 else (Color("3e8a4a") if i % 2 == 0 else Color("f4f1ea"))
+				ci.draw_colored_polygon(PackedVector2Array([Vector2(xa + 6, back_y), Vector2(xb + 6, back_y), Vector2(xb, front_y), Vector2(xa, front_y)]), col)
+				ci.draw_circle(Vector2((xa + xb) / 2.0, front_y), ww / n / 2.0, col)
+				ci.draw_line(Vector2(xa + 6, back_y), Vector2(xa, front_y), col.darkened(0.12), 1.0)
+			ci.draw_line(Vector2(x0 + 6, back_y), Vector2(x1 + 6, back_y), Color("8a6a4a"), 3.0)
+			# chậu hoa treo hai đầu mái
+			for x in [x0 + 10, x1 - 10]:
+				ci.draw_line(Vector2(x, front_y + 8), Vector2(x, front_y + 22), Color("6e4527"), 1.5)
+				ci.draw_rect(Rect2(x - 8, front_y + 22, 16, 10), Color("b8643a"))
+				ci.draw_circle(Vector2(x - 4, front_y + 20), 5, Color("4f9a45"))
+				ci.draw_circle(Vector2(x + 4, front_y + 20), 5, Color("4f9a45"))
+				ci.draw_circle(Vector2(x, front_y + 17), 3, Color("e2453c"))
 		2:
-			ci.draw_colored_polygon(PackedVector2Array([Vector2(d.position.x - 16, top + 22), Vector2(d.end.x + 16, top + 22), Vector2(d.end.x - 10, top - 4), Vector2(d.position.x + 10, top - 4)]), Color("7a4520"))
-			for i in 6:
-				var x := d.position.x - 10 + i * (d.size.x + 20) / 5.0
-				ci.draw_line(Vector2(x, top + 22), Vector2(lerpf(d.position.x + 10, d.end.x - 10, i / 5.0), top - 4), Color("5a3214"), 2.0)
+			ci.draw_colored_polygon(PackedVector2Array([Vector2(x0 - 4, top + 26), Vector2(x1 + 4, top + 26), Vector2(x1 - 24, top - 8), Vector2(x0 + 24, top - 8)]), Color("7a4520"))
+			for i in 7:
+				ci.draw_line(Vector2(lerpf(x0 - 4, x1 + 4, i / 6.0), top + 26), Vector2(lerpf(x0 + 24, x1 - 24, i / 6.0), top - 8), Color("5a3214"), 2.0)
+			ci.draw_rect(Rect2(x0 - 6, top + 24, ww + 12, 6), Color("5a3214"))
 		_:
-			var c := Vector2(d.get_center().x, top + 20)
+			var c := Vector2(d.get_center().x, top + 22)
 			var arc := PackedVector2Array()
 			for i in 25:
 				var a := PI + PI * i / 24.0
-				arc.append(c + Vector2(cos(a) * (d.size.x / 2.0 + 14), sin(a) * 34))
+				arc.append(c + Vector2(cos(a) * (ww / 2.0), sin(a) * 34))
 			ci.draw_colored_polygon(arc, Color("2f6a3c"))
 			ci.draw_polyline(arc, GOLD, 3.0)
 			for i in 7:
 				var a := PI + PI * (i + 0.5) / 7.0
-				var p := c + Vector2(cos(a) * (d.size.x / 2.0 + 14), sin(a) * 34)
+				var p := c + Vector2(cos(a) * (ww / 2.0), sin(a) * 34)
 				var g := 0.6 + 0.4 * sin(t * 3.0 + i)
 				ci.draw_circle(p, 6, Color(1, 0.9, 0.5, 0.25 * g))
 				ci.draw_circle(p, 2.5, Color(1, 0.95, 0.7, g))
@@ -378,9 +404,11 @@ static func draw_preview(ci: CanvasItem, kind: String, tier: int, size: Vector2,
 			draw_sign(ci, Vector2(c.x, size.y * 0.75 - 43), "SHOP", tier, font, t)
 		"quay":
 			ci.draw_rect(Rect2(Vector2.ZERO, size), Color("6fb35a"))
-			var d := Rect2(Vector2(c.x - 50, size.y - 40), Vector2(100, 34))
-			draw_counter_back(ci, Rect2(d.position + Vector2(0, 30), d.size), tier, t)
-			ci.draw_set_transform(d.position, 0.0, Vector2(100.0 / 170.0, 34.0 / 56.0))
+			# vẽ quầy cỡ thật (170 x 56, mái cao ROOF_H) rồi thu nhỏ vừa khung
+			var k := minf((size.y - 8.0) / (56.0 + ROOF_H + 40.0), (size.x - 8.0) / 230.0)
+			var org := Vector2(c.x - 85.0 * k, size.y - 4.0 - 56.0 * k)
+			ci.draw_set_transform(org, 0.0, Vector2(k, k))
+			draw_counter_back(ci, Rect2(Vector2.ZERO, Vector2(170, 56)), tier, t)
 			draw_counter_front(ci, Vector2(170, 56), tier, font)
 			ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		"hang_rao":

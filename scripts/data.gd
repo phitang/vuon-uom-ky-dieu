@@ -184,7 +184,7 @@ const SHOP_UPGRADES := {
 		{"ten": "Bảng gỗ chạm, đèn treo", "gia": 8000},
 		{"ten": "Bảng cẩm thạch chữ vàng", "gia": 25000}]},
 	"quay": {"ten": "Quầy tính tiền", "bac": [
-		{"ten": "Quầy gỗ đơn giản", "gia": 0},
+		{"ten": "Quầy gỗ, mái vải kem", "gia": 0},
 		{"ten": "Quầy gỗ bóng, mái che sọc", "gia": 3000},
 		{"ten": "Quầy kính trưng bày hoa", "gia": 10000},
 		{"ten": "Quầy cao cấp viền vàng, mái đèn", "gia": 30000}]},

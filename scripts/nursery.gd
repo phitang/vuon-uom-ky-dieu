@@ -165,7 +165,7 @@ func _gate() -> Vector2:
 
 
 func _counter_desk() -> Rect2:
-	return Rect2(Vector2(size.x * 0.04, TOP_H + 104), Vector2(170, 56))
+	return Rect2(Vector2(size.x * 0.04, TOP_H + 150), Vector2(170, 56))
 
 
 func _notification(what: int) -> void:
@@ -221,7 +221,7 @@ func _update_keeper(delta: float) -> void:
 
 ## Chân ghế đá (đồ trang trí) trên bãi cỏ bên trái sân.
 func _bench_pos() -> Vector2:
-	return Vector2(98, _center().y - 40)
+	return Vector2(98, _center().y - 4)
 
 
 ## Khách thường thỉnh thoảng ra ghế đá ngồi nghỉ (mỗi khách tối đa một lần, mỗi lúc một người).
@@ -1007,7 +1007,7 @@ func _draw() -> void:
 	var spots := {
 		"bon_hoa": [Vector2(w * 0.22, fy + 50), Vector2(w * 0.84, fy + 50)],
 		"ghe_da": [_bench_pos()],
-		"xich_du": [Vector2(100, c.y + 80)],
+		"xich_du": [Vector2(100, c.y + 118)],
 		"tuong": [Vector2(w - 50, c.y - 60)],
 		"o_du": [Vector2(w - 55, c.y + 66)],
 	}
