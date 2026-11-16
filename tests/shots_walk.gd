@@ -8,7 +8,7 @@ func _ready() -> void:
 	bg.color = Color("6fb35a")
 	bg.size = Vector2(1280, 720)
 	add_child(bg)
-	var ids := ["khach_xanh", "khach_tim", "khach_raglan", "khach_do", "ban_hang"]
+	var ids := ["dan_anh", "dan_anh_thuong", "khach_xanh", "khach_vang", "khach_hong"]
 	for r in ids.size():
 		for f in 8:
 			var n := Control.new()
