@@ -1,8 +1,9 @@
 extends Control
-## Túi hạt: lưới 4 x 2 ô lõm mỗi trang, chấm báo trang ở dưới.
+## Túi hạt: lưới 4 x 2 ô lõm mỗi trang, thanh chuyển túi ở dưới (nút mũi tên trái / phải).
 ## - Chạm nhẹ vào hạt: chọn hạt.
-## - Lướt ngang trong khung: sang trang trái / phải (trang trượt theo ngón tay).
-## - Kéo hạt ra khỏi khung: bắt đầu kéo thả hạt để gieo vào chậu.
+## - Bấm mũi tên: sang túi trước / túi sau (trang trượt nhẹ).
+## - Chạm giữ hạt rồi kéo theo hướng bất kỳ: hạt đi theo ngón tay để gieo vào chậu hoặc thả vào Kho hạt.
+##   (Không còn lướt ngang để đổi trang nên không lẫn với thao tác kéo hạt.)
 
 const UiSkin := preload("res://scripts/ui_skin.gd")
 const SeedArt := preload("res://scripts/seed_art.gd")
@@ -14,8 +15,8 @@ const ROWS := 2
 const PER_PAGE := COLS * ROWS
 const PAD := Vector2(8, 6)
 const GAP := 6.0
-const DOTS_H := 14.0
-const SWIPE_MIN := 50.0
+const DOTS_H := 30.0     # thanh nút mũi tên dưới lưới
+const ARROW_W := 46.0
 
 var count := 0          # số hạt đang có
 var kinds: Array = []   # mỗi hạt: {"hoa": loài hoa, "hiem": độ hiếm 0..3}
@@ -88,49 +89,38 @@ func _index_at(pos: Vector2) -> int:
 	return -1
 
 
+func _arrow_rect(dir: int) -> Rect2:
+	var y := size.y - DOTS_H + 2
+	var x := PAD.x if dir < 0 else size.x - PAD.x - ARROW_W
+	return Rect2(Vector2(x, y), Vector2(ARROW_W, DOTS_H - 4))
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			# nút mũi tên chuyển túi
+			for dir in [-1, 1]:
+				if _arrow_rect(dir).grow(4).has_point(event.position):
+					if page + dir >= 0 and page + dir < pages():
+						go_page(page + dir)
+					_state = ""
+					accept_event()
+					return
 			_state = "pending"
 			_press_pos = event.position
 			_press_idx = _index_at(event.position)
-			if _tween:
-				_tween.kill()
-			_offset = 0.0
 		else:
-			var dx: float = event.position.x - _press_pos.x
 			if _state == "pending" and _press_idx >= 0:
 				seed_tapped.emit(_press_idx)
-			elif _state == "swipe":
-				if dx <= -SWIPE_MIN and page < pages() - 1:
-					go_page(page + 1)
-				elif dx >= SWIPE_MIN and page > 0:
-					go_page(page - 1)
-				else:
-					go_page(page)
 			_state = ""
 		accept_event()
-	elif event is InputEventMouseMotion and _state != "":
+	elif event is InputEventMouseMotion and _state == "pending":
 		var d: Vector2 = event.position - _press_pos
-		if _state == "pending" and d.length() > 10.0:
-			if absf(d.x) > absf(d.y) and pages() > 1:
-				_state = "swipe"
-			elif _press_idx >= 0:
-				_start_seed_drag()
+		if d.length() > 8.0:
+			if _press_idx >= 0:
+				_start_seed_drag()   # hạt bám theo ngón tay
 				return
-			else:
-				_state = ""
-		if _state == "swipe":
-			# kéo ra khỏi khung khi đang cầm một hạt: chuyển sang gieo hạt
-			if _press_idx >= 0 and not Rect2(Vector2.ZERO, size).grow(6).has_point(event.position):
-				_offset = 0.0
-				_start_seed_drag()
-				return
-			var off := d.x
-			if (page == 0 and off > 0) or (page == pages() - 1 and off < 0):
-				off *= 0.3   # mép trang: kéo nặng tay
-			_offset = off
-			queue_redraw()
+			_state = ""
 		accept_event()
 
 
@@ -157,6 +147,7 @@ func _start_seed_drag() -> void:
 	ic.size = Vector2(64, 64)
 	ic.position = Vector2(-32, -32)
 	wrap.add_child(ic)
+	wrap.z_index = 4000   # luôn nổi trên chậu, khách và bảng bật lên
 	force_drag({"hat": _press_idx}, wrap)
 	queue_redraw()
 
@@ -176,15 +167,23 @@ func _draw() -> void:
 			if idx < count:
 				var k := _kind(idx)
 				SeedArt.draw_seed(self, r.get_center(), minf(cs.x, cs.y) / 64.0, k["hoa"], int(k["hiem"]), _t + idx * 0.7)
-	# chấm báo trang
+	# thanh chuyển túi: « mũi tên trái · Túi 1/2 · mũi tên phải »
 	var n := pages()
-	if n > 1:
-		var y := size.y - DOTS_H / 2.0 - 1
-		var start := size.x / 2.0 - (n - 1) * 8.0
-		for i in n:
-			var c := Vector2(start + i * 16.0, y)
-			draw_circle(c, 4.5, Color(0.2, 0.12, 0.05, 0.6))
-			draw_circle(c, 3.2, Color("f6d55c") if i == page else Color("c9b08a"))
+	for dir in [-1, 1]:
+		var r: Rect2 = _arrow_rect(dir)
+		var on: bool = page + dir >= 0 and page + dir < n
+		var base: Color = Color("a8742e") if on else Color("8a6a4a")
+		draw_rect(r, Color(0.2, 0.1, 0.03, 0.55))
+		draw_rect(Rect2(r.position + Vector2(1, 1), r.size - Vector2(2, 3)), base)
+		draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 3)), base.lightened(0.25))
+		var c: Vector2 = r.get_center()
+		var tri: PackedVector2Array = PackedVector2Array([c + Vector2(-7 * dir, -7), c + Vector2(8 * dir, 0), c + Vector2(-7 * dir, 7)])
+		draw_colored_polygon(tri, Color("fff1cf") if on else Color(1, 0.95, 0.85, 0.35))
+	var font := get_theme_default_font()
+	var text := "Túi %d/%d" % [page + 1, n]
+	var fs := 16
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	draw_string(font, Vector2(size.x / 2.0 - tw / 2.0, size.y - 9), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("6b4426"))
 
 
 ## Hình hạt đi theo ngón tay khi kéo đi gieo.

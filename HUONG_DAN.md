@@ -12,7 +12,7 @@ Dự án Godot 4 cho game trồng và lai giống cây trên Android, làm theo 
 - Chậu trống cần có đất: chạm chọn chậu, rồi bấm **túi đất** ở hàng dụng cụ. Túi luôn cho loại đất tốt nhất bạn đã mua và đổi hình theo loại đó (bao vàng nhãn xẻng: thường; bao xanh nhãn mầm cây: tốt; bao tím nhãn viên ngọc: hiếm). Bán cây, bỏ cây, thu hạt xong hoặc mua chậu mới thì chậu hết đất, phải cho đất lại.
 - **Kéo** một hạt trong *Túi hạt* thả vào chậu có đất để gieo (chậu nhận được sẽ sáng xanh khi đang kéo). Sau đó **tưới nước** thì hạt mới bắt đầu lớn.
 - Mỗi loài hoa có hình hạt riêng (hạt hồng nâu đỏ, cúc tròn sậm, sao 3 hạt đen dẹp, tulip là củ có rễ, chuông dẹp dài, lan tròn nhỏ, sen vàng nâu, rồng là củ tím có mầm đỏ). Hạt quý hiếm phát sáng nhẹ: xanh dương = Hiếm, tím = Quý, vàng = Huyền thoại.
-- **Túi hạt** có 8 ô. Chạm để chọn hạt, **lướt ngang** trong khung để sang trang khác (chấm dưới khung cho biết đang ở trang nào). Túi đầy thì không mua, lai hay thu thêm hạt được; mua **Túi hạt thêm** ở mục Vật tư (1.000 xu, thêm 8 ô, tối đa 6 túi).
+- **Túi hạt** có 8 ô. Chạm để chọn hạt, bấm **nút mũi tên trái / phải** dưới khung để đổi túi (giữa hai nút ghi đang ở túi mấy). Chạm giữ hạt rồi kéo: hạt bám theo ngón tay để gieo vào chậu hoặc thả vào nút Kho hạt. Túi đầy thì không mua, lai hay thu thêm hạt được; mua **Túi hạt thêm** ở mục Vật tư (1.000 xu, thêm 8 ô, tối đa 6 túi).
 - Chạm vào cây để chọn, rồi bấm dụng cụ: bình tưới (bình nghiêng đổ nước vào chậu), bao phân (hồi 35% sức khỏe; cây chưa ra hoa còn lớn nhanh hơn), kéo (thu hạt khi cây già, có hoạt ảnh kéo cắt quanh bông hoa), túi đất (bao đất đặt cạnh chậu, xẻng xúc đất đổ vào).
 - Đất kém hơn cây cần: thiếu 1 cấp mất hết sức khỏe trong 10 giờ, thiếu 2 cấp trong 4 giờ, và cây không tự hồi sức khỏe; phải bón phân (`HEALTH_SOIL_LOSS`, `FERTILIZER_HEAL` trong `data.gd`).
 - **Súng thụ phấn:** kéo súng thả vào cây đang ra hoa để nạp phấn, súng tự quay về hàng dụng cụ (bình phấn sáng vàng). Kéo súng lần nữa tới cây ra hoa thứ hai để thụ phấn (20 xu). Thả súng lại vào chính cây vừa lấy phấn là **tự thụ phấn**: 3 hạt ra giống hệt cây đó. Cây đang kết hạt vẫn cho phấn được. Bấm vào súng đang có phấn để bỏ phấn.
@@ -108,7 +108,7 @@ Gợi ý câu lệnh tạo ảnh: *"Watercolor and ink botanical illustration, f
 | `scripts/music.gd` | Nhạc nền: chuyển bài mượt giữa vườn và shop, bật/tắt, âm lượng |
 | `scripts/ui_skin.gd` | "Da" giao diện nổi khối: nút vát cạnh viền kim loại, băng tên, ô lõm, khung giấy da viền gỗ, nền gỗ (sinh bằng code) |
 | `scripts/seed_art.gd` | Hình hạt theo loài hoa (hồng, cúc, sao, tulip, chuông, lan, sen, rồng); hạt Hiếm/Quý/Huyền thoại phát sáng xanh/tím/vàng |
-| `scripts/seed_bag.gd` | Túi hạt: lưới 4 × 2 mỗi trang, chạm chọn, lướt đổi trang, kéo hạt ra để gieo |
+| `scripts/seed_bag.gd` | Túi hạt: lưới 4 × 2 mỗi trang, chạm chọn, nút mũi tên đổi túi, kéo hạt để gieo |
 | `scripts/vines.gd` | Dây leo trang trí quanh bảng trái |
 | `fonts/Lora-700.ttf`, `fonts/Lora-500.ttf` | Phông chữ Lora (có tiếng Việt), giấy phép SIL OFL trong `fonts/OFL-Lora.txt` |
 | `scripts/tool_icon.gd` | Biểu tượng dụng cụ vẽ bằng code: bình tưới, bao phân, kéo, súng thụ phấn, túi đất 3 loại |

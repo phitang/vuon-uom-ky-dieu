@@ -16,6 +16,7 @@ const PotSlot := preload("res://scripts/pot_slot.gd")
 const ToolIcon := preload("res://scripts/tool_icon.gd")
 const UiSkin := preload("res://scripts/ui_skin.gd")
 const SeedBag := preload("res://scripts/seed_bag.gd")
+const SeedArtLib := preload("res://scripts/seed_art.gd")
 const Vines := preload("res://scripts/vines.gd")
 const DragScroll := preload("res://scripts/drag_scroll.gd")
 const DecorPreview := preload("res://scripts/decor_preview.gd")
@@ -428,7 +429,7 @@ func _build_left() -> void:
 	v.add_theme_constant_override("separation", 7)
 	panel.add_child(v)
 
-	# Túi hạt: chạm để chọn, lướt ngang để sang trang, kéo ra để gieo
+	# Túi hạt: chạm để chọn, bấm mũi tên để đổi túi, kéo hạt để gieo
 	seed_banner = _banner("Túi hạt")
 	v.add_child(seed_banner)
 	var seed_box := PanelContainer.new()
@@ -436,7 +437,7 @@ func _build_left() -> void:
 	v.add_child(seed_box)
 	seed_bag = Control.new()
 	seed_bag.set_script(SeedBag)
-	seed_bag.custom_minimum_size = Vector2(0, 112)
+	seed_bag.custom_minimum_size = Vector2(0, 128)
 	seed_bag.seed_tapped.connect(_select_seed)
 	seed_box.add_child(seed_bag)
 
@@ -1044,6 +1045,7 @@ func _gun_drag_data(b: Control):
 	ic.loaded = not pollen_gen.is_empty()
 	ic.tier = 2 if gs.gold_gun else 0
 	holder.add_child(ic)
+	holder.z_index = 4000
 	b.set_drag_preview(holder)
 	tool_icons["sung"].modulate.a = 0.0    # súng đang trên tay
 	_status("Thả súng vào cây đang ra hoa." if pollen_gen.is_empty() else "Thả súng vào cây ra hoa để thụ phấn (%d xu), thả lại cây cũ là tự thụ phấn." % Data.POLLINATE_COST)
@@ -2218,7 +2220,16 @@ func _open_storage() -> void:
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(holder)
 	box.add_child(_button("Đóng", _close_popup, PRIMARY))
-	var refresh := func(): _refresh_storage(holder)
+	var refresh := func():
+		# không dựng lại bảng khi đang kéo hạt (dựng lại làm mất hạt đang bám theo ngón tay)
+		# và chỉ dựng lại khi túi / kho thật sự thay đổi
+		if get_viewport().gui_is_dragging():
+			return
+		var sig := "%d|%d|%d|%d|%s|%s" % [gs.seeds.size(), gs.storage.size(), gs.seed_capacity(), gs.storage_cap, kho_page["tui"], kho_page["kho"]]
+		if holder.get_meta("sig", "") == sig:
+			return
+		holder.set_meta("sig", sig)
+		_refresh_storage(holder)
 	popup_refresh = refresh
 	refresh.call()
 
@@ -2285,40 +2296,88 @@ func _storage_side(side: String, title: String, list: Array, cap: int, per_page:
 		var i: int = start + n
 		if i >= cap:
 			break
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(80, 80)
-		b.focus_mode = Control.FOCUS_NONE
-		var st := UiSkin.inset_box(Color("5a3a22"), Vector4(4, 4, 4, 4))
-		for k in ["normal", "hover", "pressed", "disabled"]:
-			b.add_theme_stylebox_override(k, st)
-		grid.add_child(b)
+		var cell := StoreCell.new()
+		cell.custom_minimum_size = Vector2(80, 80)
+		cell.style = UiSkin.inset_box(Color("5a3a22"), Vector4(4, 4, 4, 4))
+		cell.accept = accept
+		cell.drop = do_drop
+		grid.add_child(cell)
 		if i < list.size():
-			var ic := SeedBag.SeedPreview.new()
-			ic.kind = _kind_of(list[i]["gen"])
-			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			b.add_child(ic)
 			var idx := i
-			b.pressed.connect(func():   # chạm: chuyển sang bên kia
+			cell.kind = _kind_of(list[idx]["gen"])
+			cell.drag_data = {"kho_tu": side, "idx": idx}
+			cell.on_tap = func():   # chạm: chuyển sang bên kia
 				if side == "tui":
 					gs.store_seed(idx)
 				else:
 					gs.take_seed(idx)
-				selected_seed = mini(selected_seed, maxi(0, gs.seeds.size() - 1)))
-			b.set_drag_forwarding(func(_pos):
-					var pv := SeedBag.SeedPreview.new()
-					pv.kind = _kind_of(list[idx]["gen"])
-					pv.size = Vector2(72, 72)
-					pv.position = Vector2(-36, -36)
-					var hold := Control.new()
-					hold.add_child(pv)
-					b.set_drag_preview(hold)
-					return {"kho_tu": side, "idx": idx},
-				func(_p, d): return accept.call(d),
-				func(_p, d): do_drop.call(d))
-		else:
-			b.set_drag_forwarding(Callable(), func(_p, d): return accept.call(d), func(_p, d): do_drop.call(d))
+				selected_seed = mini(selected_seed, maxi(0, gs.seeds.size() - 1))
 	return panel
+
+
+## Ô hạt trong bảng Kho hạt. Chạm: chuyển hạt sang bên kia. Chạm giữ rồi kéo: hạt rời ô, bám theo
+## ngón tay, thả vào bên kia để chuyển (tự xử lý chạm thay vì dùng Button để kéo trên điện thoại chắc chắn).
+class StoreCell extends Control:
+	var kind := {}
+	var style: StyleBox
+	var drag_data := {}
+	var on_tap := Callable()
+	var accept := Callable()
+	var drop := Callable()
+	var _press := Vector2.ZERO
+	var _pressing := false
+	var _dragging := false
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _process(delta: float) -> void:
+		if not kind.is_empty() and int(kind.get("hiem", 0)) >= 1:
+			_t += delta
+			queue_redraw()
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_pressing = true
+				_press = event.position
+			else:
+				if _pressing and not _dragging and not kind.is_empty() and on_tap.is_valid():
+					on_tap.call()
+				_pressing = false
+			accept_event()
+		elif event is InputEventMouseMotion and _pressing and not _dragging and not kind.is_empty():
+			if (event.position - _press).length() > 8.0:
+				_pressing = false
+				_dragging = true
+				var pv := SeedBag.SeedPreview.new()
+				pv.kind = kind
+				pv.size = Vector2(80, 80)
+				pv.position = Vector2(-40, -40)
+				var hold := Control.new()
+				hold.z_index = 4000   # vẽ trên bảng bật lên (bảng dùng z 3000)
+				hold.add_child(pv)
+				force_drag(drag_data, hold)
+				queue_redraw()
+			accept_event()
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_DRAG_END and _dragging:
+			_dragging = false
+			queue_redraw()
+
+	func _can_drop_data(_p: Vector2, data: Variant) -> bool:
+		return accept.is_valid() and accept.call(data)
+
+	func _drop_data(_p: Vector2, data: Variant) -> void:
+		drop.call(data)
+
+	func _draw() -> void:
+		if style:
+			draw_style_box(style, Rect2(Vector2.ZERO, size))
+		if not kind.is_empty() and not _dragging:   # đang kéo: ô để trống, hạt nằm dưới ngón tay
+			SeedArtLib.draw_seed(self, size / 2.0, minf(size.x, size.y) / 64.0, kind.get("hoa", "hong"), int(kind.get("hiem", 0)), _t)
 
 
 # =====================================================================

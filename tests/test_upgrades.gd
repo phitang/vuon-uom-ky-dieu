@@ -88,9 +88,11 @@ func _ready() -> void:
 	await _drag(from_btn.get_global_rect().get_center(), to_btn.get_global_rect().get_center())
 	print("Kéo túi -> kho: túi ", gs.seeds.size(), " | kho ", gs.storage.size())
 	# chạm để chuyển
+	for w in 5:
+		await get_tree().process_frame
 	cells.clear()
 	_find_cells(main.overlay, cells)
-	cells[0].pressed.emit()
+	cells[0].on_tap.call()
 	await get_tree().process_frame
 	print("Chạm chuyển: túi ", gs.seeds.size(), " | kho ", gs.storage.size())
 	await get_tree().process_frame
@@ -118,7 +120,7 @@ func _ready() -> void:
 
 func _find_cells(root: Node, out: Array) -> void:
 	for n in root.get_children():
-		if n is Button and n.custom_minimum_size == Vector2(80, 80):
+		if n.get_class() == "Control" and n.has_method("_drop_data") and n.custom_minimum_size == Vector2(80, 80):
 			out.append(n)
 		_find_cells(n, out)
 
@@ -137,6 +139,9 @@ func _drag(a: Vector2, b: Vector2) -> void:
 	Input.parse_input_event(ev)
 	await get_tree().process_frame
 	for k in 20:
+		if k == 12 and a != b and OS.get_environment("SHOT_DIR") != "":
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(OS.get_environment("SHOT_DIR") + "/kho_dang_keo.png")
 		var mm := InputEventMouseMotion.new()
 		mm.position = a.lerp(b, (k + 1) / 20.0)
 		mm.global_position = mm.position
