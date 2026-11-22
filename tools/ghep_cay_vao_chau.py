@@ -24,7 +24,7 @@ SOIL=PA[inner][:,:3]
 soil_mean=SOIL.mean(0)
 soil_lum=SOIL.mean(1).mean()
 
-def split_mound(p):
+def split_mound(p, low=0.76):
     """Tách ụ đất (đất sẫm, ít xanh) ở đáy ảnh cây. Trả về (mask ụ đất, tâm x, hàng đáy, hàng đỉnh ụ)."""
     A=np.array(p).astype(float); rgb=A[:,:,:3]; al=A[:,:,3]
     r,g,b=rgb[:,:,0],rgb[:,:,1],rgb[:,:,2]
@@ -35,7 +35,7 @@ def split_mound(p):
     seed0=(r>b+30)&(r>95)
     dark=(~green)&(~seed0)&(al>150)&(sat<0.35)&(mx<200)
     rows=dark.sum(1).astype(float)
-    rows[:int(h*0.62)]=0
+    rows[:int(h*low)]=0
     widest=rows.max()
     band=np.where(rows>widest*0.3)[0]
     top=band.min() if len(band) else h-1
@@ -45,17 +45,24 @@ def split_mound(p):
     # mọi điểm không phải lá xanh / thân nâu sáng / hạt trong vùng ụ đất đều là đất (kể cả viền sáng)
     seedc=(r>b+30)&(r>95)
     m|=(np.arange(h)[:,None]>=top+2)&(~green)&(~seedc)&(al>0)
+    # viền sáng mảnh trên đỉnh ụ đất (nét viền của ảnh gốc) cũng tô thành đất
+    near=ndimage.binary_dilation(m,iterations=10)
+    m|=near&(~green)&(~seedc)&(sat<0.22)&(np.arange(h)[:,None]>=top-60)
     ys,xs=np.where(m&(al>150))
     mcx=xs.mean() if len(xs) else p.width/2
-    bottom=ys.max() if len(ys) else h-1
-    return m,mcx,bottom,top
+    # chỗ thân cây cắm vào đất: mặt trên của ụ đất ngay giữa ụ
+    c0=int(mcx); band_c=m[:, max(0,c0-12):c0+12]&(al[:, max(0,c0-12):c0+12]>150)
+    rr=np.where(band_c.any(1))[0]
+    base=rr.min() if len(rr) else top
+    return m,mcx,base,top
 
-def compose(plant, s, seed_up=0.0):
+def compose(plant, s, seed_up=0.0, low=0.76):
     p=plant.resize((max(1,int(plant.width*s)),max(1,int(plant.height*s))),Image.LANCZOS)
-    m,mcx,bottom,top=split_mound(p)
+    m,mcx,base,top=split_mound(p, low)
     A=np.array(p).astype(float)
     # đáy ụ đất nằm ở phần dưới miệng chậu, tâm ụ trùng tâm miệng chậu
-    ox=int(round(cx-mcx)); oy=int(round(cy+ry*0.62-bottom-seed_up))
+    # gốc cây đặt ngay tâm mặt đất trong chậu
+    ox=int(round(cx-mcx)); oy=int(round(cy+ry*0.12-base-seed_up))
     L=np.zeros((H,W,4)); M=np.zeros((H,W),bool)
     ys,xs=np.mgrid[0:p.height,0:p.width]
     ty=ys+oy; tx=xs+ox
@@ -99,5 +106,5 @@ for col in ['xanh','do','vang']:
     compose(p,s*0.8).save(OUT+f'bonsai/2_{col}.png'); compose(p,s).save(OUT+f'bonsai/3_{col}.png')
 p=ld('mai_3'); s=min(640/p.height,560/p.width)
 compose(ld('mai_2'),s*0.85).save(OUT+'mai/2.png'); compose(p,s).save(OUT+'mai/3.png')
-m0=ld('mam_0'); compose(m0,400/m0.width).save(OUT+'chung/0.png')
-m1=ld('mam_1'); compose(m1,400/m1.width).save(OUT+'chung/1.png')
+m0=ld('mam_0'); compose(m0,400/m0.width,low=0.45).save(OUT+'chung/0.png')
+m1=ld('mam_1'); compose(m1,400/m1.width,low=0.55).save(OUT+'chung/1.png')
