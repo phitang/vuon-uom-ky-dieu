@@ -227,7 +227,7 @@ func _bench_pos() -> Vector2:
 ## Khách thường thỉnh thoảng ra ghế đá ngồi nghỉ (mỗi khách tối đa một lần, mỗi lúc một người).
 func _wants_bench(c: Dictionary) -> bool:
 	return gs.decor_owned.get("ghe_da", false) and bench_user == null and event == "" \
-		and c["role"] == "" and not c.get("rested", false) and not c["cust"].get("dan_anh", false) \
+		and c["role"] == "" and not c.get("rested", false) and not c["cust"].get("dan_anh", false) and not c["cust"].get("ve_si", false) \
 		and not c["cust"].get("cong_tu", false) and randf() < Data.BENCH_CHANCE
 
 
@@ -425,7 +425,13 @@ func _spawn_customer() -> void:
 	node.size = CUST_SIZE
 	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(node)
-	if not seen_events.has("dan_anh") and randf() < Data.DAN_ANH_SPAWN_CHANCE:
+	var ve_si: bool = not seen_events.has("ve_si") and event == "" and randf() < Data.VE_SI_SPAWN_CHANCE
+	if ve_si:
+		# vệ sĩ của công tử đi tìm cậu chủ: dạo một vòng rồi về, không mua
+		seen_events["ve_si"] = true
+		cust["ve_si"] = true
+		node.setup(cust["type"], 0, "ve_si")
+	elif not seen_events.has("dan_anh") and randf() < Data.DAN_ANH_SPAWN_CHANCE:
 		# đàn anh khu phố ghé như khách thường
 		seen_events["dan_anh"] = true
 		cust["dan_anh"] = true
@@ -436,6 +442,10 @@ func _spawn_customer() -> void:
 		"visits": randi_range(2, 4), "seen": [], "choice": -1, "pos": _gate() + Vector2(0, -30), "role": ""}
 	customers.append(c)
 	_place(c)
+	if ve_si:
+		c["visits"] = randi_range(3, 4)
+		c["speed"] = 1.15
+		node_say(c, ["Cậu chủ có ở đây không?", "Cậu chủ ơi!"].pick_random())
 	_go_next_stand(c)
 
 
@@ -552,6 +562,12 @@ func _arrive(c: Dictionary) -> void:
 				c["timer"] = 1.8
 				node.queue_redraw()
 				return
+			if c["cust"].get("ve_si", false):
+				node.bubble = ["Cậu chủ đâu rồi?", "Cậu chủ ơi!", "Không thấy cậu chủ…", "Cậu chủ có ghé đây không?"].pick_random()
+				node.facing = -node.facing    # ngó nghiêng tìm người
+				c["timer"] = 1.6
+				node.queue_redraw()
+				return
 			var liked := false
 			if k >= 0 and stands[k]["sold"] < 0 and not gs.pots[stands[k]["pot"]].is_empty():
 				liked = Gen.count_matches(gs.pots[stands[k]["pot"]]["gen"], c["cust"]["wish"]) > 0
@@ -601,6 +617,9 @@ func _decide(c: Dictionary) -> void:
 		c["state"] = "look"      # quầy đang bận: đứng xem thêm chút
 		c["timer"] = 1.5
 		c["visits"] = 1
+		return
+	if c["cust"].get("ve_si", false):
+		_leave(c, "Cậu chủ không có ở đây, đi tìm chỗ khác!")
 		return
 	if c["role"] in ["vip", "vip2"]:
 		counter_claim = c
@@ -831,6 +850,11 @@ func _spawn_vip_guest() -> void:
 	var c: Dictionary = customers.back()
 	c["cust"]["cong_tu"] = true
 	c["cust"].erase("dan_anh")
+	if c["cust"].has("ve_si"):
+		c["cust"].erase("ve_si")
+		seen_events.erase("ve_si")
+		c["visits"] = randi_range(2, 4)
+		c["speed"] = 0.85
 	c["node"].setup(c["cust"]["type"], 0, "cong_tu")
 	c["speed"] = 0.85
 	node_say(c, "Để bản công tử xem nào!")

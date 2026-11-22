@@ -247,6 +247,7 @@ const BAO_KE_FEE := 100              # tiền bảo kê khi chọn "Đóng tiề
 const VIP_COMMON_WAIT := 180.0       # shop toàn cây Thường quá 3 phút chưa bán hết: công tử vào chê rồi đi
 const VIP_LEGEND_WAIT := 300.0       # shop còn cây Huyền thoại quá 5 phút: công tử hỏi mua cây đắt nhất
 # Đàn anh thỉnh thoảng vào như khách thường (tối đa một lần mỗi lần mở Shop cây), khó mua hơn.
+const VE_SI_SPAWN_CHANCE := 0.1      # khả năng vệ sĩ ghé tìm cậu chủ (không mua, mỗi lần mở shop tối đa 1 lần)
 const DAN_ANH_SPAWN_CHANCE := 0.12   # khả năng mỗi khách mới là đàn anh
 const DAN_ANH_BUY_FACTOR := 0.55     # tỉ lệ mua chỉ bằng phần này so với khách thường
 # Công tử ghé như khách thường khi shop còn cây sau 7 phút (một lần mỗi lần mở Shop cây):

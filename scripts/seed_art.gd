@@ -9,7 +9,7 @@ extends RefCounted
 ##   lan   : hạt tròn nhỏ màu kem
 ##   sen   : hạt bầu dục vàng nâu, đầu sẫm
 ##   rong  : củ tím sẫm có đốm và mầm đỏ
-##   xr_tron: nhúm hạt đen li ti trên lớp bông trắng
+##   xr_tron, xr_cao, bonsai, mai: ảnh art/hat/<loài>.png (vẽ bằng Gemini)
 ##   xr_cao : quả xương rồng đỏ bổ đôi, ruột hồng lấm tấm hạt đen
 ##   mai    : hạt mai đen bóng gắn trên đài hoa đỏ
 ##   bonsai : quả cánh (như quả phong) màu nâu vàng
@@ -23,6 +23,13 @@ const OUTLINE := Color("2a1608")
 static func draw_seed(ci: CanvasItem, c: Vector2, s: float, kind: String, rarity := 0, t := 0.0) -> void:
 	if rarity >= 1:
 		_glow(ci, c, s, rarity, t)
+	var tex := _seed_tex(kind)
+	if tex:
+		# hạt vẽ bằng Gemini: xương rồng (bầu dục có gai li ti), bonsai (củ như củ sâm), mai (bầu dục đen)
+		var ts := tex.get_size()
+		var k := 40.0 * s / maxf(ts.x, ts.y)
+		ci.draw_texture_rect(tex, Rect2(c - ts * k / 2.0, ts * k), false)
+		return
 	match kind:
 		"cuc": _cuc(ci, c, s)
 		"sao": _sao(ci, c, s)
@@ -36,6 +43,15 @@ static func draw_seed(ci: CanvasItem, c: Vector2, s: float, kind: String, rarity
 		"mai": _mai(ci, c, s)
 		"bonsai": _bonsai(ci, c, s)
 		_: _hong(ci, c, s)
+
+
+static var _seed_cache := {}
+
+static func _seed_tex(kind: String) -> Texture2D:
+	if not _seed_cache.has(kind):
+		var path := "res://art/hat/%s.png" % kind
+		_seed_cache[kind] = load(path) if ResourceLoader.exists(path) else null
+	return _seed_cache[kind]
 
 
 static func _glow(ci: CanvasItem, c: Vector2, s: float, rarity: int, t: float) -> void:

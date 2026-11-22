@@ -2,8 +2,8 @@ extends Node
 ## Bảng mẫu các loại hạt (4 mức độ hiếm) và túi hạt trong game.
 
 const SeedArt := preload("res://scripts/seed_art.gd")
-const KINDS := ["hong", "cuc", "sao", "tulip", "chuong", "lan", "sen", "rong"]
-const NAMES := ["Hồng", "Cúc", "Sao", "Tulip", "Chuông", "Lan", "Sen", "Rồng"]
+const KINDS := ["hong", "cuc", "sao", "tulip", "chuong", "lan", "sen", "rong", "xr_tron", "xr_cao", "mai", "bonsai"]
+const NAMES := ["Hồng", "Cúc", "Sao", "Tulip", "Chuông", "Lan", "Sen", "Rồng", "XR tròn", "XR cao", "Mai", "Bonsai"]
 
 class Sheet extends Control:
 	func _draw() -> void:
@@ -12,13 +12,13 @@ class Sheet extends Control:
 		var rar := ["Thường", "Hiếm", "Quý", "Huyền thoại"]
 		for r in 4:
 			draw_string(font, Vector2(14, 120 + r * 130), rar[r], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2614"))
-			for k in 8:
-				var c := Vector2(200 + k * 130, 110 + r * 130)
-				draw_rect(Rect2(c - Vector2(52, 52), Vector2(104, 104)), Color("6b4426"))
-				SeedArt.draw_seed(self, c, 1.6, KINDS[k], r, 0.6 + k * 0.7)
-		for k in 8:
-			var w := font.get_string_size(NAMES[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-			draw_string(font, Vector2(200 + k * 130 - w / 2, 36), NAMES[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("3a2614"))
+			for k in 12:
+				var c := Vector2(170 + k * 92, 110 + r * 130)
+				draw_rect(Rect2(c - Vector2(42, 42), Vector2(84, 84)), Color("6b4426"))
+				SeedArt.draw_seed(self, c, 1.3, KINDS[k], r, 0.6 + k * 0.7)
+		for k in 12:
+			var w := font.get_string_size(NAMES[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+			draw_string(font, Vector2(170 + k * 92 - w / 2, 36), NAMES[k], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("3a2614"))
 
 func _ready() -> void:
 	var out: String = OS.get_environment("SHOT_DIR")

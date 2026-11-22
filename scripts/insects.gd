@@ -13,6 +13,7 @@ const SPAWN_MAX := 70.0
 const LIFETIME := 35.0
 const SIZE := Vector2(84, 84)        # vùng chạm (đủ lớn cho ngón tay)
 
+
 var paused_check := Callable()       # trả về true khi đang có bảng bật lên / đang ở Shop cây
 var spawn_timer := 0.0
 
@@ -63,6 +64,7 @@ func clear() -> void:
 
 
 class Bug extends Control:
+	static var cache := {}   # giữ ảnh côn trùng, nếu không ảnh bị giải phóng ngay sau khi vẽ
 	var kind := "buom"
 	var level := 0
 	var layer: Control
@@ -73,6 +75,7 @@ class Bug extends Control:
 	var flap := 0.0
 	var facing := 1.0
 	var preview := false     # chỉ để vẽ trong bảng câu hỏi, không bay
+	var heading := 0.0       # góc quay của thân (ảnh nhìn từ trên, đầu hướng lên)
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE if preview else Control.MOUSE_FILTER_STOP
@@ -116,6 +119,10 @@ class Bug extends Control:
 		position += vel * delta
 		if absf(vel.x) > 8.0:
 			facing = signf(vel.x)
+		if vel.length() > 12.0:
+			# đầu hướng theo chiều bay, nghiêng nhẹ (không lộn ngược)
+			var want_h := clampf(vel.x / 130.0, -1.0, 1.0) * 0.9   # nghiêng đầu về phía đang bay
+			heading = lerp_angle(heading, want_h, clampf(delta * 4.0, 0.0, 1.0))
 		if leaving and center().y < -80.0:
 			queue_free()
 
@@ -127,8 +134,42 @@ class Bug extends Control:
 			layer.insect_tapped.emit(kind, level)
 			queue_free()
 
+	func _tex() -> Texture2D:
+		var path := "res://art/sau/ong.png"
+		if kind == "buom":
+			path = "res://art/sau/buom_%d.png" % level
+		elif kind == "chuon":
+			path = "res://art/sau/chuon_%d.png" % level
+		# giữ ảnh trong bộ nhớ đệm, nếu không ảnh bị giải phóng ngay sau khi vẽ (hiện ô trắng)
+		if not Bug.cache.has(path):
+			Bug.cache[path] = load(path) if ResourceLoader.exists(path) else null
+		return Bug.cache[path]
+
 	func _draw() -> void:
 		var c := size / 2.0
+		var tex := _tex()
+		if tex:
+			# ảnh vẽ bằng Gemini: bướm khép mở cánh, chuồn chuồn và ong rung cánh
+			var box := minf(size.x, size.y) * (1.0 if preview else 1.15)
+			var ts := tex.get_size()
+			var k := box / maxf(ts.x, ts.y)
+			if kind == "ong":
+				k *= 0.8
+			var sx := 1.0
+			var sy := 1.0
+			match kind:
+				"buom":
+					sx = 0.25 + 0.75 * absf(sin(flap))
+					sy = 0.96 + 0.04 * absf(sin(flap))
+				"chuon":
+					sx = 0.9 + 0.1 * absf(sin(flap))
+				_:
+					sx = 0.94 + 0.06 * absf(sin(flap))
+			var rot := 0.0 if preview else heading
+			draw_set_transform(c, rot, Vector2(sx, sy) * k)
+			draw_texture_rect(tex, Rect2(-ts / 2.0, ts), false)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 		var sc := minf(size.x, size.y) / 84.0 * (1.0 if preview else 1.35)
 		draw_set_transform(c, 0.0, Vector2(facing, 1.0) * sc)
 		match kind:
