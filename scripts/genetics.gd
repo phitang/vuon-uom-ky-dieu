@@ -24,6 +24,11 @@ static func phenotype(gen: Dictionary) -> Dictionary:
 	var p := {}
 	for part in Data.PARTS:
 		p[part] = expressed(gen, part)
+	# Mai kiểng chỉ nở hoa vàng; bonsai chỉ có 3 màu lá (ghi vào "mau" để Sổ tay gom đúng giống)
+	if p["hoa"] == "mai":
+		p["mau"] = "vang"
+	elif p["hoa"] == "bonsai":
+		p["mau"] = {"xanh": "trang", "do": "do", "vang": "vang"}[Data.bonsai_leaf(p["mau"])]
 	return p
 
 
@@ -66,6 +71,10 @@ static func rarity(gen: Dictionary) -> int:
 ## Tên giống tự sinh, ví dụ "Sao Tím Xoắn".
 static func variety_name_of_pheno(p: Dictionary) -> String:
 	var name := "%s %s" % [Data.trait_name("hoa", p["hoa"]), Data.trait_name("mau", p["mau"])]
+	if p["hoa"] == "bonsai":
+		name = "Bonsai " + Data.BONSAI_LEAF_NAMES[Data.bonsai_leaf(p["mau"])]
+	elif p["hoa"] == "mai":
+		name = "Mai vàng kiểng"
 	if Data.TRAITS["than"][p["than"]]["hiem"] > 0:
 		name += " " + Data.trait_name("than", p["than"])
 	if Data.TRAITS["la"][p["la"]]["hiem"] > 0:

@@ -9,6 +9,10 @@ extends RefCounted
 ##   lan   : hạt tròn nhỏ màu kem
 ##   sen   : hạt bầu dục vàng nâu, đầu sẫm
 ##   rong  : củ tím sẫm có đốm và mầm đỏ
+##   xr_tron: nhúm hạt đen li ti trên lớp bông trắng
+##   xr_cao : quả xương rồng đỏ bổ đôi, ruột hồng lấm tấm hạt đen
+##   mai    : hạt mai đen bóng gắn trên đài hoa đỏ
+##   bonsai : quả cánh (như quả phong) màu nâu vàng
 ## Hạt Hiếm / Quý / Huyền thoại phát sáng nhẹ (xanh dương / tím / vàng).
 
 const Data := preload("res://scripts/data.gd")
@@ -27,6 +31,10 @@ static func draw_seed(ci: CanvasItem, c: Vector2, s: float, kind: String, rarity
 		"lan": _lan(ci, c, s)
 		"sen": _sen(ci, c, s)
 		"rong": _rong(ci, c, s)
+		"xr_tron": _xr_tron(ci, c, s)
+		"xr_cao": _xr_cao(ci, c, s)
+		"mai": _mai(ci, c, s)
+		"bonsai": _bonsai(ci, c, s)
 		_: _hong(ci, c, s)
 
 
@@ -166,3 +174,62 @@ static func _rong(ci: CanvasItem, c: Vector2, s: float) -> void:
 	for p in [Vector2(2, 0), Vector2(-6, 9)]:
 		ci.draw_circle(c + p * s, 1.6 * s, Color("7aa04a"))
 	_shine(ci, c + Vector2(-7, -3) * s, 2.0 * s)
+
+
+# ---------------- Xương rồng tròn: hạt đen li ti trên lớp bông ----------------
+static func _xr_tron(ci: CanvasItem, c: Vector2, s: float) -> void:
+	_blob(ci, c + Vector2(0, 3) * s, 16 * s, 11 * s, 0.0, Color("f2efe6"), 0.12)
+	for i in 4:
+		ci.draw_circle(c + Vector2(-10 + i * 7, -3 + (i % 2) * 3) * s, 4.5 * s, Color("ffffff"))
+	var dots := [Vector2(-8, 2), Vector2(-3, -2), Vector2(2, 3), Vector2(7, -1), Vector2(-5, 7), Vector2(4, 8), Vector2(10, 5), Vector2(0, -6)]
+	for d in dots:
+		_blob(ci, c + d * s, 2.2 * s, 1.6 * s, d.x * 0.1, Color("1a1a1a"), 0.0, false)
+		ci.draw_circle(c + (d + Vector2(-0.6, -0.6)) * s, 0.6 * s, Color(1, 1, 1, 0.8))
+
+
+# ---------------- Xương rồng cao: quả đỏ bổ đôi ----------------
+static func _xr_cao(ci: CanvasItem, c: Vector2, s: float) -> void:
+	_blob(ci, c, 13 * s, 17 * s, 0.25, Color("c8324a"))
+	_blob(ci, c + Vector2(0.5, 0.5) * s, 9.5 * s, 13.5 * s, 0.25, Color("f27a9a"), 0.0, false)
+	for i in 9:
+		var a := i * 2.4
+		var r := 3.0 + (i % 3) * 2.5
+		ci.draw_circle(c + Vector2(cos(a) * r * 0.75, sin(a) * r).rotated(0.25) * s, 1.3 * s, Color("1a1012"))
+	ci.draw_line(c + Vector2(4, -17).rotated(0.25) * s, c + Vector2(7, -22).rotated(0.25) * s, Color("5a8a3a"), 2.0 * s)
+	_shine(ci, c + Vector2(-6, -8) * s, 1.8 * s)
+
+
+# ---------------- Mai: hạt đen bóng trên đài hoa đỏ ----------------
+static func _mai(ci: CanvasItem, c: Vector2, s: float) -> void:
+	var base := c + Vector2(0, 8) * s
+	for i in 5:
+		var a := -PI / 2.0 + (i - 2) * 0.55
+		var tip := base + Vector2.from_angle(a + PI) * -11.0 * s
+		_blob(ci, base.lerp(tip, 0.55), 6.5 * s, 3.2 * s, a, Color("c8282a"))
+	ci.draw_line(base, base + Vector2(0, 10) * s, Color("6a4a2a"), 2.0 * s)
+	for p in [Vector2(-7, -4), Vector2(6, -6), Vector2(0, -12)]:
+		_blob(ci, c + p * s, 5.5 * s, 6.5 * s, 0.0, Color("161418"))
+		_shine(ci, c + (p + Vector2(-2, -2.5)) * s, 1.6 * s)
+
+
+# ---------------- Bonsai: quả cánh như quả phong ----------------
+static func _bonsai(ci: CanvasItem, c: Vector2, s: float) -> void:
+	for side in [-1.0, 1.0]:
+		var pts := PackedVector2Array()
+		var outp := PackedVector2Array()
+		for i in 16:
+			var t := float(i) / 15.0
+			var w := sin(t * PI) * 7.0
+			pts.append(c + Vector2(side * (3 + t * 18), -4 - t * 10 - w) * s)
+		for i in 16:
+			var t := 1.0 - float(i) / 15.0
+			var w := sin(t * PI) * 3.0
+			pts.append(c + Vector2(side * (3 + t * 18), -4 - t * 10 + w + 6.0 * t) * s)
+		for q in pts:
+			outp.append(c + (q - c) * 1.06)
+		ci.draw_colored_polygon(outp, OUTLINE)
+		ci.draw_colored_polygon(pts, Color("d8a24a"))
+		ci.draw_line(c + Vector2(side * 4, -3) * s, c + Vector2(side * 19, -14) * s, Color("a8702a"), 1.0 * s)
+	for side in [-1.0, 1.0]:
+		_blob(ci, c + Vector2(side * 4, 2) * s, 5.5 * s, 4.5 * s, 0.0, Color("8a5a2a"))
+	_shine(ci, c + Vector2(-5, 0) * s, 1.4 * s)

@@ -25,6 +25,10 @@ const TRAITS := {
 		"lan":    {"ten": "Lan",    "troi": 3, "hiem": 2},
 		"sen":    {"ten": "Sen",    "troi": 3, "hiem": 2},
 		"rong":   {"ten": "Rồng",   "troi": 2, "hiem": 3},
+		"xr_tron": {"ten": "Xương rồng tròn", "troi": 4, "hiem": 1},
+		"xr_cao":  {"ten": "Xương rồng cao",  "troi": 3, "hiem": 2},
+		"mai":     {"ten": "Mai kiểng",       "troi": 3, "hiem": 2},   # hoa luôn vàng
+		"bonsai":  {"ten": "Bonsai",          "troi": 1, "hiem": 3},   # không hoa, màu lá xanh/đỏ/vàng
 	},
 	"la": {
 		"tron":    {"ten": "Tròn",     "troi": 7, "hiem": 0},
@@ -58,6 +62,20 @@ const TRAITS := {
 	},
 }
 
+## Các "hoa" thật ra là loại cây (gọi là "cây ...").
+const PLANT_KINDS := ["xr_tron", "xr_cao", "mai", "bonsai"]
+
+## Bonsai không có hoa: gen màu quyết định màu lá (xanh lá / đỏ như lá phong / vàng như lá mùa thu).
+static func bonsai_leaf(mau: String) -> String:
+	if mau in ["do", "hongnhat", "tim"]:
+		return "do"
+	if mau in ["vang", "cam"]:
+		return "vang"
+	return "xanh"
+
+
+const BONSAI_LEAF_NAMES := {"xanh": "lá xanh", "do": "lá đỏ", "vang": "lá vàng"}
+
 const FLOWER_COLORS := {
 	"trang": Color("f5f3ea"),
 	"vang": Color("f6d55c"),
@@ -72,6 +90,7 @@ const FLOWER_COLORS := {
 ## Gợi ý cho các kiểu huyền thoại chưa tìm ra (hiện trong Sổ tay).
 const LEGEND_HINTS := {
 	"rong": "Chỉ xuất hiện qua đột biến khi lai hoa quý",
+	"bonsai": "Cây huyền thoại không hoa, chỉ có qua đột biến khi lai cây quý",
 	"bac": "Đột biến hiếm của lá",
 	"ngoc": "Đột biến hiếm của thân",
 	"cauvong": "Đột biến hiếm của màu hoa",
@@ -258,7 +277,7 @@ static func trait_info(part: String, id: String) -> Dictionary:
 static func trait_phrase(part: String, id: String) -> String:
 	var ten: String = trait_name(part, id)
 	match part:
-		"hoa": return "hoa " + ten.to_lower()
+		"hoa": return ("cây " if id in PLANT_KINDS else "hoa ") + ten.to_lower()
 		"la": return "lá " + ten.to_lower()
 		"than": return "thân " + ten.to_lower()
 		"mau": return "màu " + ten.to_lower()

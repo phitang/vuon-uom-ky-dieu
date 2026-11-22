@@ -4,7 +4,7 @@ extends Control
 ##   art/chau_trong.png        chậu trống
 ##   art/chung/0.png, 1.png    hạt nảy mầm, cây non (dùng chung cho mọi loài)
 ##   art/<hoa>/2.png, 3.png    nụ, ra hoa (ví dụ art/cuc/3.png). Tùy chọn: 0.png, 1.png, 4.png (già)
-##   Ảnh 300 x 542, nền trong suốt, chậu đặt đúng vị trí như ảnh mẫu.
+##   Ảnh 600 x 1084 (gấp đôi khung 300 x 542), nền trong suốt, chậu đặt đúng vị trí như ảnh mẫu.
 ##   Vẽ cánh hoa màu TRẮNG để game tô được mọi màu.
 ## - Loài chưa có ảnh thì vẽ bằng code, đặt trong chậu vẽ tay.
 
@@ -13,7 +13,9 @@ const Gen := preload("res://scripts/genetics.gd")
 const TINT_SHADER := preload("res://scripts/plant_tint.gdshader")
 
 const ART_SIZE := Vector2(300, 542)
-const ART_SOIL := Vector2(150, 336)   # gốc cây trong ảnh chậu
+const ART_SOIL := Vector2(149, 342)   # gốc cây trong ảnh chậu
+## Loài có màu riêng trong ảnh, không tô lại theo gen màu
+const NO_TINT := ["mai", "bonsai"]
 static var _tex_cache := {}
 
 var pheno: Dictionary = {}   # kiểu hiển thị; rỗng = chậu trống
@@ -57,11 +59,11 @@ func _draw_soil_overlay(rect: Rect2) -> void:
 	if soil != "tot" and soil != "hiem":
 		return
 	var k := rect.size.x / ART_SIZE.x
-	var c := rect.position + Vector2(155, 347) * k
+	var c := rect.position + Vector2(149, 344) * k
 	var pts := PackedVector2Array()
 	for i in 32:
 		var t := TAU * i / 32.0
-		pts.append(c + Vector2(cos(t) * 98.0, sin(t) * 9.0) * k)
+		pts.append(c + Vector2(cos(t) * 92.0, sin(t) * 21.0) * k)
 	if soil == "tot":
 		draw_colored_polygon(pts, Color(0.12, 0.07, 0.03, 0.5))
 		for i in 5:
@@ -89,6 +91,9 @@ static func _art(path: String) -> Texture2D:
 ## Ảnh cho giai đoạn hiện tại (null nếu loài này chưa có ảnh).
 func _stage_texture() -> Texture2D:
 	var hoa: String = pheno.get("hoa", "")
+	if hoa == "bonsai" and stage >= 2:
+		var leaf := Data.bonsai_leaf(pheno.get("mau", "trang"))
+		return _art("res://art/bonsai/%d_%s.png" % [mini(stage, 3), leaf])
 	var own := _art("res://art/%s/%d.png" % [hoa, stage])
 	if own:
 		return own
@@ -110,7 +115,7 @@ func _set_shader(tinted: bool, fade: float, sil: bool) -> void:
 	if mat == null:
 		return
 	var m: String = pheno.get("mau", "trang")
-	mat.set_shader_parameter("use_tint", tinted and m != "trang")
+	mat.set_shader_parameter("use_tint", tinted and m != "trang" and not (pheno.get("hoa", "") in NO_TINT))
 	mat.set_shader_parameter("tint", Data.FLOWER_COLORS.get(m, Color.WHITE))
 	mat.set_shader_parameter("rainbow", m == "cauvong")
 	mat.set_shader_parameter("fade", fade)

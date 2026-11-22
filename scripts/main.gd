@@ -721,9 +721,10 @@ func _refresh_info() -> void:
 		stage_l.text = "Già, đã có hạt\nDùng kéo để thu hạt"
 	if st >= 1:
 		var ph := Gen.phenotype(p["gen"])
-		traits_l.text = "Hoa %s · Lá %s · Thân %s · Màu %s · Cỡ %s" % [
-			Data.trait_name("hoa", ph["hoa"]).to_lower(), Data.trait_name("la", ph["la"]).to_lower(),
-			Data.trait_name("than", ph["than"]).to_lower(), Data.trait_name("mau", ph["mau"]).to_lower(),
+		traits_l.text = "%s · Lá %s · Thân %s · %s · Cỡ %s" % [
+			Data.trait_phrase("hoa", ph["hoa"]).left(1).to_upper() + Data.trait_phrase("hoa", ph["hoa"]).substr(1),
+			Data.trait_name("la", ph["la"]).to_lower(), Data.trait_name("than", ph["than"]).to_lower(),
+			("Màu " + Data.BONSAI_LEAF_NAMES[Data.bonsai_leaf(ph["mau"])]) if ph["hoa"] == "bonsai" else ("Màu " + Data.trait_name("mau", ph["mau"]).to_lower()),
 			Data.trait_name("co", ph["co"]).to_lower()]
 	else:
 		traits_l.text = "Hạt chỉ lộ hình dạng khi nảy mầm."
