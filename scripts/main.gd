@@ -1221,6 +1221,12 @@ func _close_popup() -> void:
 	_refresh_all()
 
 
+func _show_info_big(title: String, text: String) -> void:
+	var box := _open_popup(title, 860, 420)
+	box.add_child(_label(text, 20))
+	box.add_child(_button("Đóng", _close_popup, PRIMARY))
+
+
 func _show_info(title: String, text: String) -> void:
 	var box := _open_popup(title, 620, 340)
 	box.add_child(_label(text))
@@ -1346,6 +1352,7 @@ func _build_title() -> void:
 	box.add_child(_button("Tiếp tục chơi", _hide_title, PRIMARY))
 	box.add_child(_button("Cách chơi", _open_help))
 	box.add_child(_button("Tùy chỉnh âm thanh", _open_sound))
+	box.add_child(_button("Giới thiệu", _open_about))
 	box.add_child(_button("Chơi lại từ đầu", _ask_restart, Color("c8641e")))
 	# trình duyệt (web / iPhone) không cho game tự đóng tab nên không có nút Thoát
 	if not OS.has_feature("web"):
@@ -1356,6 +1363,15 @@ func _build_title() -> void:
 	title_screen.visible = get_tree().current_scene == self
 	if not title_screen.visible:
 		_hide_title()
+
+
+func _open_about() -> void:
+	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
+	_show_info_big("Giới thiệu", "Vườn Ươm Kỳ Diệu – phiên bản %s\n\n" % (ver if ver != "" else "1.0")
+		+ "Làm bằng Godot Engine (godotengine.org) – giấy phép MIT, © các tác giả Godot Engine.\n"
+		+ "Phông chữ Lora – giấy phép SIL Open Font License 1.1, © The Lora Project Authors.\n"
+		+ "Hình minh họa tạo với sự hỗ trợ của AI (Google Gemini); nhạc nền tạo bằng Suno.\n\n"
+		+ "Trò chơi chơi ngoại tuyến, không thu thập dữ liệu cá nhân.")
 
 
 func _show_title() -> void:
