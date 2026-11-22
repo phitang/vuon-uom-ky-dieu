@@ -22,7 +22,9 @@ func _ready() -> void:
 	pv.set_script(PlantView)
 	pv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	pv.offset_bottom = -2
+	# hạ chậu xuống để đáy chậu nằm ngay giữa đế lót trên kệ
+	pv.offset_top = 7
+	pv.offset_bottom = 7
 	add_child(pv)
 
 
