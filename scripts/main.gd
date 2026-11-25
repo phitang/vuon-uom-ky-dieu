@@ -24,7 +24,11 @@ const WaterAnim := preload("res://scripts/water_anim.gd")
 const ToolAnim := preload("res://scripts/tool_anim.gd")
 const Insects := preload("res://scripts/insects.gd")
 const Quiz := preload("res://scripts/quiz.gd")
+const Defense := preload("res://scripts/defense.gd")
+const MINI_GAMES := ["res://scripts/flower_match.gd", "res://scripts/caro.gd", "res://scripts/toeic.gd"]
 var insects: Control       # lớp côn trùng hỏi đáp bay trong nhà kính
+var defense: Control       # mini game Phòng thủ khu vườn (ô cửa sổ thứ nhất)
+var mini_games: Array = []  # Ghép hoa, Cờ caro, TOEIC 600 (ô cửa sổ 2, 3, 4)
 var tool_busy := false      # đang chạy hoạt ảnh xúc đất / cắt kéo
 const FONT_BOLD := preload("res://fonts/Lora-700.ttf")
 const FONT_MEDIUM := preload("res://fonts/Lora-500.ttf")
@@ -129,6 +133,13 @@ func _notification(what: int) -> void:
 			get_tree().quit()
 		elif nursery.visible:
 			_close_nursery()
+		elif defense.visible:
+			_close_defense()
+		elif mini_games.any(func(g): return g.visible):
+			for g in mini_games:
+				if g.visible:
+					g.close_modal()
+					_close_mini(g)
 		elif not pollen_gen.is_empty():
 			_unload_gun()
 			_refresh_all()
@@ -308,7 +319,7 @@ func _build_layout() -> void:
 	insects.offset_left = LEFT_W
 	insects.offset_bottom = -(BOTTOM_H + STATUS_H)
 	add_child(insects)
-	insects.paused_check = func(): return overlay.visible or nursery.visible or (title_screen != null and title_screen.visible)
+	insects.paused_check = func(): return overlay.visible or nursery.visible or defense.visible or mini_games.any(func(g): return g.visible) or (title_screen != null and title_screen.visible)
 	insects.insect_tapped.connect(_open_quiz)
 
 	_build_bottom()
@@ -326,6 +337,26 @@ func _build_layout() -> void:
 	nursery.decor_pressed.connect(_open_decor_shop)
 	nursery.rename_pressed.connect(_open_rename)
 	nursery.special_requested.connect(_open_special)
+
+	defense = Control.new()
+	defense.set_script(Defense)
+	defense.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	defense.visible = false
+	add_child(defense)
+	defense.paused_check = func(): return overlay.visible or (title_screen != null and title_screen.visible)
+	defense.back_pressed.connect(_close_defense)
+	defense.garden_changed.connect(_refresh_all)
+	greenhouse.window_tapped.connect(_on_window)
+	for path in MINI_GAMES:
+		var g := Control.new()
+		g.set_script(load(path))
+		g.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		g.visible = false
+		add_child(g)
+		g.paused_check = func(): return overlay.visible or (title_screen != null and title_screen.visible)
+		g.back_pressed.connect(func(): _close_mini(g))
+		g.garden_changed.connect(_refresh_all)
+		mini_games.append(g)
 
 	overlay = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1150,6 +1181,26 @@ func _open_nursery() -> void:
 	_music("shop")
 
 
+func _on_window(i: int) -> void:
+	_close_popup()
+	if i == 0:
+		defense.open()
+	elif i - 1 < mini_games.size():
+		mini_games[i - 1].open()
+
+
+func _close_mini(g: Control) -> void:
+	g.visible = false
+	_refresh_all()
+	_status("Đã về vườn.")
+
+
+func _close_defense() -> void:
+	defense.visible = false
+	_refresh_all()
+	_status("Đã về vườn. Côn trùng sẽ chờ bạn ở ô cửa sổ Phòng thủ.")
+
+
 func _close_nursery() -> void:
 	var sold := 0
 	for st in nursery.stands:
@@ -1409,7 +1460,14 @@ func _open_help() -> void:
 		"  Cây chưa ra hoa vẫn bán được nhưng chỉ thu về 50% xu (game sẽ hỏi lại trước khi đưa ra shop).\n" +
 		"• Trong Shop cây: khách vào xem các cây, ai ra đứng ở quầy thì trò chuyện mua cây; chọn cách trả lời khéo để khách mua.\n" +
 		"  Chạm vào cây trên bục để chỉnh giá. Bấm Về vườn: cây chưa bán trở lại chậu cũ.\n" +
-		"• Cây ra hoa lần đầu được ghi vào Sổ tay. Tìm đủ các giống hiếm và huyền thoại!", 21))
+		"• Cây ra hoa lần đầu được ghi vào Sổ tay. Tìm đủ các giống hiếm và huyền thoại!\n" +
+		"• Chạm ô cửa sổ \"Phòng thủ\" trên tường nhà kính để chơi mini game: đặt chậu hoa chặn côn trùng bò theo đường đất.\n" +
+		"  Diệt côn trùng được đồng bạc (chỉ dùng trong mini game) để mua và nâng cấp cây. Cứ 3 vòng có 1 boss: diệt boss được hạt giống cho vườn.\n" +
+		"  Ban đầu chỉ có Hoa sao; mỗi 3 boss mở thêm Hoa hồng, Tulip, Hoa sen, Xương rồng. Nâng cấp từ bậc Quý cần tinh dầu của Hoa hồng.\n" +
+		"• Ô cửa sổ \"Ghép hoa\": đổi chỗ hoa để ghép 3 bông trở lên; cứ thắng 4 vòng được 1 hạt giống, vòng càng cao hạt càng hiếm.\n" +
+		"• Ô cửa sổ \"Cờ caro\": xếp 5 quân liền hàng trước máy; thắng được 1 hạt giống Thường.\n" +
+		"• Ô cửa sổ \"TOEIC 600\": chọn nghĩa đúng của từng từ theo thứ tự 600 từ TOEIC; sai là học lại từ đầu.\n" +
+		"  Mốc 100 từ: hạt Thường · 200: hạt Hiếm · 300: 2 hạt Hiếm · 400: hạt Quý · 500: hạt Huyền thoại · 600: 3 hạt Huyền thoại chưa có trong Sổ tay.", 21))
 	box.add_child(_button("Đóng", _close_popup, PRIMARY))
 
 

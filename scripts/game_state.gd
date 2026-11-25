@@ -38,6 +38,8 @@ var sold_today := {}      # mã giống -> số cây đã bán hôm nay
 var day_key := ""
 var last_time := 0.0
 var away_report := ""     # tóm tắt "trong lúc bạn vắng mặt"
+var defense := {}         # tiến trình mini game Phòng thủ khu vườn
+var minigames := {}       # tiến trình các mini game khác: "ghep", "caro", "toeic"
 
 var _save_timer := 0.0
 
@@ -105,6 +107,8 @@ func new_game() -> void:
 	sold_today = {}
 	day_key = _today()
 	last_time = _now()
+	defense = {}
+	minigames = {}
 	save_game()
 
 
@@ -134,6 +138,8 @@ func save_game() -> void:
 		"ban_hom_nay": sold_today,
 		"ngay": day_key,
 		"lan_cuoi": last_time,
+		"phong_thu": defense,
+		"mini_game": minigames,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -161,6 +167,10 @@ func load_game() -> bool:
 	sold_today = data.get("ban_hom_nay", {})
 	day_key = str(data.get("ngay", _today()))
 	last_time = float(data.get("lan_cuoi", _now()))
+	var pt = data.get("phong_thu", {})
+	defense = pt if typeof(pt) == TYPE_DICTIONARY else {}
+	var mg = data.get("mini_game", {})
+	minigames = mg if typeof(mg) == TYPE_DICTIONARY else {}
 	if pots.is_empty():
 		for i in Data.START_POTS:
 			pots.append({})
@@ -1200,6 +1210,75 @@ func mark_hidden(kind: String) -> void:
 
 
 ## Thưởng xu (trả lời đúng câu đố của côn trùng...).
+## Boss trong mini game Phòng thủ rơi 1 hạt giống. Boss càng về sau hạt càng hiếm.
+## Trả về câu cho biết hạt được cất ở đâu.
+func defense_seed_reward(boss_count: int) -> String:
+	var r := 0
+	if boss_count >= 3 and randf() < 0.6:
+		r = 1
+	if boss_count >= 9 and randf() < 0.35:
+		r = 2
+	if boss_count % 6 == 0:
+		r = maxi(r, 2)
+	return give_seed(make_seed(r))
+
+
+## Tạo bộ gen có đúng độ hiếm mong muốn (0 Thường, 1 Hiếm, 2 Quý, 3 Huyền thoại).
+## Gen đồng hợp nên cây mọc ra đúng kiểu đó. new_only: chọn giống chưa có trong Sổ tay.
+func make_seed(target: int, new_only := false, avoid: Array = []) -> Dictionary:
+	target = clampi(target, 0, 3)
+	var best := {}
+	for attempt in 400:
+		var gen := {}
+		for part in Data.PARTS:
+			var pool: Array = []
+			for id in Data.TRAITS[part]:
+				var h: int = int(Data.TRAITS[part][id]["hiem"])
+				if h <= mini(target, 2):
+					for k in (4 - h):
+						pool.append(id)
+			var t: String = pool.pick_random()
+			gen[part] = [t, t]
+		if target == 3:
+			var part3: String = Data.PARTS.pick_random()
+			var legends: Array = []
+			for id in Data.TRAITS[part3]:
+				if int(Data.TRAITS[part3][id]["hiem"]) == 3:
+					legends.append(id)
+			if legends.is_empty():
+				continue
+			var l: String = legends.pick_random()
+			gen[part3] = [l, l]
+		if Gen.rarity(gen) != target:
+			continue
+		var key := Gen.variety_key(gen)
+		if best.is_empty():
+			best = gen
+		if new_only and (collection.has(key) or avoid.has(key)):
+			continue
+		return gen
+	if best.is_empty():
+		best = Gen.random_genome(0)
+	return best
+
+
+## Cất một hạt vào túi (đầy thì vào kho, kho cũng đầy thì đổi 150 xu). Trả về câu báo.
+func give_seed(gen: Dictionary) -> String:
+	var sd := {"gen": gen, "bo_me": []}
+	var where := ""
+	if seed_room() > 0:
+		seeds.append(sd)
+		where = "đã cất vào túi hạt."
+	elif storage.size() < storage_cap:
+		storage.append(sd)
+		where = "túi hạt đầy nên đã cất vào Kho hạt."
+	else:
+		coins += 150
+		where = "túi và kho đều đầy, đổi thành 150 xu."
+	_changed()
+	return where
+
+
 func reward_coins(n: int) -> void:
 	coins += n
 	_changed()

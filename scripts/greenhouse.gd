@@ -8,6 +8,25 @@ const WALL := 0.16        # phần tường phía trên (tỉ lệ chiều cao)
 const PLANK_H := 18.0
 
 var slots: Array = []
+var window_rects: Array = []   # 4 ô cửa sổ, chạm để chơi mini game
+
+signal window_tapped(index: int)
+
+const WINDOW_TITLES := ["Phòng thủ", "Ghép hoa", "Cờ caro", "TOEIC 600"]
+const FONT := preload("res://fonts/Lora-700.ttf")
+var _press := Vector2.ZERO
+
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_press = event.position
+		elif event.position.distance_to(_press) < 24:
+			for i in window_rects.size():
+				if window_rects[i].grow(6).has_point(event.position):
+					window_tapped.emit(i)
+					accept_event()
+					return
 
 
 func add_slot(slot: Control) -> void:
@@ -70,14 +89,17 @@ func _draw() -> void:
 	# Cửa sổ nhà kính
 	var win_w := 150.0
 	var gap := (w - 4 * win_w) / 5.0
+	window_rects.clear()
 	for i in 4:
 		var wx := gap + i * (win_w + gap)
 		var r := Rect2(wx, 10, win_w, wall_h - 26)
+		window_rects.append(r)
 		draw_rect(r, Color("cfeaf0"))
 		draw_rect(Rect2(wx, 10, win_w, (wall_h - 26) * 0.45), Color("e6f6f8"))
 		draw_rect(r, Color("4f3420"), false, 5.0)
 		draw_line(Vector2(wx + win_w / 2, 10), Vector2(wx + win_w / 2, 10 + r.size.y), Color("4f3420"), 4.0)
 		draw_line(Vector2(wx, 10 + r.size.y / 2), Vector2(wx + win_w, 10 + r.size.y / 2), Color("4f3420"), 4.0)
+		_draw_window_sign(i, r)
 	draw_rect(Rect2(0, wall_h - 10, w, 10), Color("5a3b23"))
 	# Kệ gỗ
 	var a := _shelf_area()
@@ -98,6 +120,29 @@ func _draw() -> void:
 			var cx := a.position.x + cw * (c + 0.5)
 			_ellipse(Vector2(cx, y + 4), cw * 0.36, 7.0, Color("9fb4c2"))
 			_ellipse(Vector2(cx, y + 3), cw * 0.33, 5.0, Color("c3d4de"))
+
+
+## Biển gỗ nhỏ treo giữa cửa sổ: tên mini game.
+func _draw_window_sign(i: int, r: Rect2) -> void:
+	var fs := 17
+	var text: String = WINDOW_TITLES[i]
+	var tw := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var bw := tw + 20.0
+	var bh := 28.0
+	var c := r.get_center()
+	var b := Rect2(c - Vector2(bw, bh) / 2.0, Vector2(bw, bh))
+	var live := true
+	draw_rect(b.grow(2), Color("3e2714"))
+	draw_rect(b, Color("c98a4a") if live else Color("9a8a78"))
+	draw_rect(Rect2(b.position, Vector2(bw, 5)), Color(1, 1, 1, 0.18))
+	draw_string(FONT, Vector2(b.position.x + 10, b.position.y + 21), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fff4dc") if live else Color("eae2d6"))
+	if i == 0:
+		# con sâu nhỏ bò trên khung cửa sổ
+		var y := r.position.y + r.size.y - 6
+		for k in 4:
+			draw_circle(Vector2(r.position.x + 26 + k * 9, y), 5.5, Color("8bd35a").darkened(0.12 * (k % 2)))
+		draw_circle(Vector2(r.position.x + 26 + 4 * 9 + 2, y - 2), 6.5, Color("9be06a"))
+		draw_circle(Vector2(r.position.x + 26 + 4 * 9 + 4, y - 4), 1.8, Color("222222"))
 
 
 func _ellipse(center: Vector2, rx: float, ry: float, col: Color) -> void:
