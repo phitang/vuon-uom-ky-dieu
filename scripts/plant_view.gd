@@ -94,11 +94,12 @@ func _stage_texture() -> Texture2D:
 	if hoa == "bonsai" and stage >= 2:
 		var leaf := Data.bonsai_leaf(pheno.get("mau", "trang"))
 		return _art("res://art/bonsai/%d_%s.png" % [mini(stage, 3), leaf])
+	# Hạt và cây non luôn dùng ảnh chung (chậu mới); bỏ qua ảnh 0/1 cũ còn sót.
+	if stage <= 1:
+		return _art("res://art/chung/%d.png" % stage)
 	var own := _art("res://art/%s/%d.png" % [hoa, stage])
 	if own:
 		return own
-	if stage <= 1:
-		return _art("res://art/chung/%d.png" % stage)
 	if stage == 4:
 		return _art("res://art/%s/3.png" % hoa)
 	return null
