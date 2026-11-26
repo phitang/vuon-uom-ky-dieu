@@ -31,6 +31,7 @@ func _ready() -> void:
 	var d = main.defense
 	print("defense visible: ", d.visible)
 	d.bosses = 12
+	d.snail_killed = true
 	d.silver = 5000
 	d.essence = 1000
 	var spots := [[1, 3, "sao"], [4, 3, "sen"], [3, 7, "tulip"], [5, 3, "xuong_rong"], [8, 3, "hong"], [9, 4, "sao"], [11, 0, "sao"], [7, 7, "xuong_rong"], [4, 0, "tulip"]]
@@ -42,17 +43,36 @@ func _ready() -> void:
 			d.upgrade(d.towers[i])
 	# mọi loài côn trùng đứng rải trên đường
 	d.in_wave = true
-	var kinds := ["sau", "bo_xit", "ret", "chau_chau", "boss_ret", "boss_nhen", "boss_ong"]
+	var kinds := ["sau", "bo_xit", "ret", "chau_chau", "boss_ret", "boss_nhen", "boss_oc"]
 	for i in kinds.size():
 		d._spawn(kinds[i])
 		d.enemies.back()["d"] = 1.0 + i * 4.2
 		d.enemies.back()["hp"] *= 0.4 + 0.1 * i
 	d.enemies[2]["freeze"] = 2.0
+	d.silver += 500
+	d.release_ally("bo_canh_cam")
+	d.allies.back()["d"] = 27.5
+	d.ally_cd = 0.0
+	d.release_ally("chuon_chuon")
+	d.allies.back()["d"] = 20.0
+	d.ally_cd = 0.0
+	d.release_ally("bo_canh_cam")
+	d.allies.back()["d"] = 9.3
 	for k in 20:
 		d.step(1.0 / 60.0)
+	print("allies on field: ", d.allies.size(), " blocked: ", d.enemies.filter(func(e): return e.get("chan", false)).size())
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out + "/def_bugs.png")
+	# cột phải cuộn xuống phần côn trùng phòng thủ
+	var sc: ScrollContainer = d.shop_box.get_parent()
+	sc.scroll_vertical = 100000
+	d._close_info()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(out + "/def_shop.png")
+	sc.scroll_vertical = 0
 	d.enemies.clear()
 	d.in_wave = false
 	d.round_no = 6

@@ -21,18 +21,23 @@ def objects(a, fg, min_area=3000):
     res.sort(key=lambda r: (r[0], r[1]))
     return [r[2] for r in res]
 
-G = 'art/phong_thu_goc/'
-jobs = [
-    ('thuong.png', 'art/phong_thu/', ['sau', 'bo_xit', 'ret', 'chau_chau'], 220),
-    ('boss.jpg', 'art/phong_thu/', ['boss_ret', 'boss_nhen', 'boss_ong'], 360),
-    ('hoa_tron.jpg', 'art/minigame/', ['hong', 'huong_duong', 'violet', 'bim_bim', 'anh_dao', 'cuc', 'co_ba_la', 'bo_rua'], 160),
-]
-import os
-for f, out, names, mx in jobs:
-    os.makedirs(out, exist_ok=True)
-    a, fg = cut(G + f)
-    objs = objects(a, fg)
-    print(f, len(objs), [o.size for o in objs])
-    for n, o in zip(names, objs):
+if __name__ == '__main__':
+    G = 'art/phong_thu_goc/'
+    jobs = [
+        ('thuong.png', 'art/phong_thu/', ['sau', 'bo_xit', 'ret', 'chau_chau'], 220),
+        ('boss.jpg', 'art/phong_thu/', ['boss_ret', 'boss_nhen', 'boss_ong'], 360),
+        ('hoa_tron.jpg', 'art/minigame/', ['hong', 'huong_duong', 'violet', 'bim_bim', 'anh_dao', 'cuc', 'co_ba_la', 'bo_rua'], 160),
+    ]
+    import os
+    for f, out, names, mx in jobs:
+        os.makedirs(out, exist_ok=True)
+        a, fg = cut(G + f)
+        objs = objects(a, fg)
+        print(f, len(objs), [o.size for o in objs])
+        for n, o in zip(names, objs):
+            o.thumbnail((mx, mx), Image.LANCZOS)
+            o.save(out + n + '.png')
+    a, fg = cut(G + 'oc_bo_chuon.jpg')
+    for n, o, mx in zip(['boss_oc', 'bo_canh_cam', 'chuon_chuon'], objects(a, fg), [360, 220, 240]):
         o.thumbnail((mx, mx), Image.LANCZOS)
-        o.save(out + n + '.png')
+        o.save('art/phong_thu/%s.png' % n)

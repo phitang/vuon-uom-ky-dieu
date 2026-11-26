@@ -1462,8 +1462,10 @@ func _open_help() -> void:
 		"  Chạm vào cây trên bục để chỉnh giá. Bấm Về vườn: cây chưa bán trở lại chậu cũ.\n" +
 		"• Cây ra hoa lần đầu được ghi vào Sổ tay. Tìm đủ các giống hiếm và huyền thoại!\n" +
 		"• Chạm ô cửa sổ \"Phòng thủ\" trên tường nhà kính để chơi mini game: đặt chậu hoa chặn côn trùng bò theo đường đất.\n" +
-		"  Diệt côn trùng được đồng bạc (chỉ dùng trong mini game) để mua và nâng cấp cây. Cứ 3 vòng có 1 boss: diệt boss được hạt giống cho vườn.\n" +
-		"  Ban đầu chỉ có Hoa sao; mỗi 3 boss mở thêm Hoa hồng, Tulip, Hoa sen, Xương rồng. Nâng cấp từ bậc Quý cần tinh dầu của Hoa hồng.\n" +
+		"  Diệt côn trùng được đồng bạc (chỉ dùng trong mini game) để mua và nâng cấp cây. Cứ 3 vòng có 1 boss: diệt boss được 1 túi phân bón cho vườn.\n" +
+		"  Ban đầu chỉ có Hoa sao; Xương rồng mở ở 6 boss, Hoa sen 10 boss, Hoa hồng 12 boss. Boss ốc sên (vòng 44, 55... 99) cho 3 túi phân bón, diệt lần đầu mở Tulip.\n" +
+		"  Diệt 3 boss mở côn trùng phòng thủ: bọ cánh cam đi ngược đường chặn địch (nâng cấp bằng bạc, tăng máu), chuồn chuồn bay bắn gai (nâng cấp bằng tinh dầu, bay chậm lại).\n" +
+		"  Nâng cấp cây từ bậc Quý cần tinh dầu của Hoa hồng.\n" +
 		"• Ô cửa sổ \"Ghép hoa\": đổi chỗ hoa để ghép 3 bông trở lên; cứ thắng 4 vòng được 1 hạt giống, vòng càng cao hạt càng hiếm.\n" +
 		"• Ô cửa sổ \"Cờ caro\": xếp 5 quân liền hàng trước máy; thắng được 1 hạt giống Thường.\n" +
 		"• Ô cửa sổ \"TOEIC 600\": chọn nghĩa đúng của từng từ theo thứ tự 600 từ TOEIC; sai là học lại từ đầu.\n" +

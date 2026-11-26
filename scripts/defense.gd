@@ -2,8 +2,10 @@ extends Control
 ## Mini game "Phòng thủ khu vườn" (mở bằng ô cửa sổ thứ nhất trong nhà kính).
 ## Côn trùng có hại bò theo đường đất; người chơi đặt chậu hoa phòng thủ trên cỏ.
 ## - Tiền trong game là đồng bạc (riêng, không phải xu ngoài vườn).
-## - 99 vòng, cứ 2 vòng thường thì vòng thứ 3 có boss. Diệt boss nhận hạt giống cho vườn.
-## - Bắt đầu chỉ có Hoa sao; cứ diệt 3 boss mở thêm: Hoa hồng, Tulip, Hoa sen, Xương rồng.
+## - 99 vòng, cứ 2 vòng thường thì vòng thứ 3 có boss. Boss ốc sên đến ở vòng 44, 55, 66, 77, 88, 99.
+## - Diệt boss nhận phân bón cho cây ngoài vườn (boss ốc sên: 3 túi).
+## - Bắt đầu chỉ có Hoa sao; mở khóa: Xương rồng (6 boss), Hoa sen (10 boss), Hoa hồng (12 boss),
+##   Tulip (diệt boss ốc sên). Côn trùng phòng thủ (bọ cánh cam, chuồn chuồn) mở khi diệt 3 boss.
 ## - Nâng cấp cây: Thường → Hiếm → Quý → Huyền thoại (Quý trở lên cần tinh dầu hoa hồng).
 ## Tiến trình lưu vào GameState.defense ở đầu và cuối mỗi vòng.
 
@@ -29,36 +31,51 @@ const GOLD := Color("d9b26a")
 ## Đường đi (toạ độ ô). Bắt đầu ngoài mép trái, kết thúc ngoài mép phải.
 const PATH := [Vector2(-1, 1), Vector2(2, 1), Vector2(2, 6), Vector2(6, 6), Vector2(6, 1), Vector2(10, 1), Vector2(10, 6), Vector2(14, 6)]
 
+## "can": sát thương mỗi giây khi cắn bọ cánh cam đang chặn đường. "bay": không bị bọ cánh cam chặn.
 const ENEMIES := {
-	"sau": {"ten": "Sâu xanh", "mau": 28.0, "toc": 1.0, "bac": 3, "mang": 1, "co": 0.72},
-	"bo_xit": {"ten": "Bọ xít", "mau": 55.0, "toc": 0.85, "bac": 5, "mang": 1, "co": 0.74},
-	"ret": {"ten": "Rết", "mau": 95.0, "toc": 1.15, "bac": 7, "mang": 2, "co": 0.9},
-	"chau_chau": {"ten": "Châu chấu", "mau": 80.0, "toc": 1.7, "bac": 8, "mang": 2, "co": 0.84},
-	"boss_ret": {"ten": "Rết ba đầu", "mau": 340.0, "toc": 0.55, "bac": 50, "mang": 5, "co": 1.5, "boss": true},
-	"boss_nhen": {"ten": "Nhện chúa", "mau": 290.0, "toc": 0.7, "bac": 50, "mang": 5, "co": 1.45, "boss": true},
-	"boss_ong": {"ten": "Ong bắp cày chúa", "mau": 250.0, "toc": 0.95, "bac": 50, "mang": 5, "co": 1.4, "boss": true},
+	"sau": {"ten": "Sâu xanh", "mau": 28.0, "toc": 1.0, "bac": 3, "mang": 1, "co": 0.72, "can": 6.0},
+	"bo_xit": {"ten": "Bọ xít", "mau": 55.0, "toc": 0.85, "bac": 5, "mang": 1, "co": 0.74, "can": 9.0},
+	"ret": {"ten": "Rết", "mau": 95.0, "toc": 1.15, "bac": 7, "mang": 2, "co": 0.9, "can": 14.0},
+	"chau_chau": {"ten": "Châu chấu", "mau": 80.0, "toc": 1.7, "bac": 8, "mang": 2, "co": 0.84, "can": 12.0},
+	"boss_ret": {"ten": "Rết ba đầu", "mau": 340.0, "toc": 0.55, "bac": 50, "mang": 5, "co": 1.5, "boss": true, "can": 40.0},
+	"boss_nhen": {"ten": "Nhện chúa", "mau": 290.0, "toc": 0.7, "bac": 50, "mang": 5, "co": 1.45, "boss": true, "can": 40.0},
+	"boss_ong": {"ten": "Ong bắp cày chúa", "mau": 250.0, "toc": 0.95, "bac": 50, "mang": 5, "co": 1.4, "boss": true, "can": 40.0, "bay": true},
+	"boss_oc": {"ten": "Ốc sên chúa", "mau": 1200.0, "toc": 0.35, "bac": 150, "mang": 10, "co": 1.7, "boss": true, "can": 60.0, "oc": true},
 }
+const SNAIL_ROUNDS := [44, 55, 66, 77, 88, 99]
+
+## Côn trùng phòng thủ: thả từ cổng vườn, đi ngược đường về phía côn trùng có hại.
+const ALLY_ORDER := ["bo_canh_cam", "chuon_chuon"]
+const ALLIES := {
+	"bo_canh_cam": {"ten": "Bọ cánh cam", "gia": 30, "mo": 3, "toc": 0.9, "mau": 60.0,
+		"mo_ta": "Đi ngược đường chặn địch. Bị cắn hết máu thì biến mất.",
+		"nang_cap": "+25% máu mỗi cấp, chỉ tốn bạc, không giới hạn."},
+	"chuon_chuon": {"ten": "Chuồn chuồn", "gia": 45, "mo": 3, "toc": 2.4, "tam": 2.2, "nap": 0.7, "dam": 14.0,
+		"mo_ta": "Bay nhanh về cổng địch, bắn 2 đạn gai, không bị cản.",
+		"nang_cap": "Bay chậm lại (bắn được lâu hơn), chỉ tốn tinh dầu.", "cap_toi_da": 8},
+}
+const ALLY_COOLDOWN := 1.5
 const BOSS_ORDER := ["boss_ret", "boss_nhen", "boss_ong"]
 
-const TOWER_ORDER := ["sao", "hong", "tulip", "sen", "xuong_rong"]
+const TOWER_ORDER := ["sao", "xuong_rong", "sen", "hong", "tulip"]
 const TOWERS := {
 	"sao": {"ten": "Hoa sao", "gia": 50, "mo": 0, "hoa": "sao", "mau": "vang",
 		"mo_ta": "Bắn đạn sao nhỏ vào một con.",
 		"huyen_thoai": "Đạn sao lớn, sát thương cao, văng trúng con bên cạnh.",
 		"tam": [2.4, 2.5, 2.6, 2.8], "nap": 0.8, "dam": [10.0, 18.0, 32.0, 55.0]},
-	"hong": {"ten": "Hoa hồng", "gia": 75, "mo": 3, "hoa": "hong", "mau": "do",
+	"hong": {"ten": "Hoa hồng", "gia": 85, "mo": 12, "hoa": "hong", "mau": "do",
 		"mo_ta": "Tiết tinh dầu để nâng cấp cây.",
 		"huyen_thoai": "Quấn dây gai trói một con, rút máu từ từ đến chết.",
 		"tam": [2.4, 2.4, 2.4, 2.4], "tinh_dau": [10.0, 8.5, 7.0, 5.5], "dam": [0.0, 0.0, 0.0, 14.0]},
-	"tulip": {"ten": "Hoa tulip", "gia": 65, "mo": 6, "hoa": "tulip", "mau": "tim",
+	"tulip": {"ten": "Hoa tulip", "gia": 100, "mo": -1, "hoa": "tulip", "mau": "tim",
 		"mo_ta": "Tạo vùng làm chậm côn trùng đi qua.",
 		"huyen_thoai": "Vùng làm chậm còn làm mất máu.",
 		"tam": [1.5, 1.7, 1.9, 2.2], "cham": [0.30, 0.38, 0.46, 0.55], "dam": [0.0, 0.0, 0.0, 20.0]},
-	"sen": {"ten": "Hoa sen", "gia": 85, "mo": 9, "hoa": "sen", "mau": "hongnhat",
+	"sen": {"ten": "Hoa sen", "gia": 75, "mo": 10, "hoa": "sen", "mau": "hongnhat",
 		"mo_ta": "Bắn tia nước làm đóng băng một con.",
 		"huyen_thoai": "Bắn cùng lúc 2 tia nước.",
 		"tam": [3.0, 3.0, 3.1, 3.2], "nap": 2.6, "dam": [8.0, 14.0, 24.0, 40.0], "bang": [1.0, 1.3, 1.6, 2.0]},
-	"xuong_rong": {"ten": "Xương rồng", "gia": 95, "mo": 12, "hoa": "xr_cao", "mau": "trang",
+	"xuong_rong": {"ten": "Xương rồng", "gia": 65, "mo": 6, "hoa": "xr_cao", "mau": "trang",
 		"mo_ta": "Bắn gai mọi con ở gần (2 ô).",
 		"huyen_thoai": "Bắn gai xa gấp đôi.",
 		"tam": [1.6, 1.65, 1.7, 3.4], "nap": 1.2, "dam": [9.0, 16.0, 28.0, 48.0]},
@@ -76,6 +93,11 @@ var silver := START_SILVER
 var essence := 0
 var lives := START_LIVES
 var bosses := 0            # số boss đã diệt trong ván này
+var snail_killed := false  # đã diệt boss ốc sên (mở khóa Tulip)
+var ally_lv := {"bo_canh_cam": 0, "chuon_chuon": 0}
+var ally_cd := 0.0
+var allies: Array = []     # côn trùng phòng thủ đang trên đường
+var ally_btns := {}        # loại -> {"tha": Button, "nang": Button, "mo_ta": Label}
 var best := 0
 var towers: Array = []     # {"c","r","kind","tier","spent","cd","node","vine"}
 var enemies: Array = []
@@ -207,6 +229,9 @@ func _build() -> void:
 		shop_btns[k] = b
 	var hint := _label("Chọn cây rồi chạm vào ô cỏ để đặt. Chạm vào cây đã đặt để nâng cấp.", 15, Color("6b5a44"))
 	shop_box.add_child(hint)
+	shop_box.add_child(_label("Côn trùng phòng thủ", 20, Color("5e3b22"), HORIZONTAL_ALIGNMENT_CENTER))
+	for k in ALLY_ORDER:
+		shop_box.add_child(_ally_card(k))
 
 	# Bảng thông tin cây
 	info_panel = PanelContainer.new()
@@ -235,6 +260,64 @@ func _build() -> void:
 	end_panel.visible = false
 	end_panel.z_index = 80
 	add_child(end_panel)
+
+
+## Thẻ côn trùng phòng thủ: tên, mô tả, nút Thả và nút Nâng cấp.
+func _ally_card(kind: String) -> Control:
+	var info: Dictionary = ALLIES[kind]
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiSkin.bevel_box(Color("fffaf0"), Color("a8875a"), 10, "normal", Vector4(8, 6, 8, 8)))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	card.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var icon := TextureRect.new()
+	icon.texture = tex(kind)
+	icon.custom_minimum_size = Vector2(52, 44)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(icon)
+	var name_l := _label(info["ten"], 18, Color("3a2614"))
+	name_l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.add_child(name_l)
+	var desc := _label("", 13, Color("5a4a3a"))
+	desc.custom_minimum_size.x = 200
+	v.add_child(desc)
+	var tha := _btn("", func(): release_ally(kind), Color("3e7d4a"))
+	tha.add_theme_font_size_override("font_size", 15)
+	tha.custom_minimum_size = Vector2(0, 40)
+	v.add_child(tha)
+	var nang := _btn("", func(): upgrade_ally(kind), Color("6a5a8a"))
+	nang.add_theme_font_size_override("font_size", 14)
+	nang.custom_minimum_size = Vector2(0, 40)
+	v.add_child(nang)
+	ally_btns[kind] = {"tha": tha, "nang": nang, "mo_ta": desc}
+	return card
+
+
+func _refresh_allies() -> void:
+	for k in ally_btns:
+		var b: Dictionary = ally_btns[k]
+		var info: Dictionary = ALLIES[k]
+		var open: bool = unlocked(k)
+		var lv: int = ally_lv[k]
+		if not open:
+			b["mo_ta"].text = lock_text(k)
+		elif k == "bo_canh_cam":
+			b["mo_ta"].text = "%s\nCấp %d · máu %d" % [info["mo_ta"], lv, int(ally_hp(lv))]
+		else:
+			b["mo_ta"].text = "%s\nCấp %d · tốc độ bay %.1f ô/giây" % [info["mo_ta"], lv, ally_speed(k)]
+		b["tha"].text = "Thả (%d bạc)" % info["gia"]
+		b["tha"].disabled = not open or not in_wave or silver < int(info["gia"])
+		var cost := ally_upgrade_cost(k)
+		if cost.is_empty():
+			b["nang"].text = "Đã tối đa"
+			b["nang"].disabled = true
+		else:
+			b["nang"].text = "Nâng cấp: %s" % ("%d bạc" % cost[0] if cost[0] > 0 else "%d tinh dầu" % cost[1])
+			b["nang"].disabled = not open or silver < cost[0] or essence < cost[1]
 
 
 func _hud_label(col: Color) -> Label:
@@ -310,6 +393,8 @@ func _load() -> void:
 	essence = int(d.get("tinh_dau", 0))
 	lives = int(d.get("mang", START_LIVES))
 	bosses = int(d.get("boss", 0))
+	snail_killed = bool(d.get("oc", false))
+	ally_lv = {"bo_canh_cam": int(d.get("bo_lv", 0)), "chuon_chuon": int(d.get("chuon_lv", 0))}
 	for t in d.get("cay", []):
 		if typeof(t) == TYPE_DICTIONARY and TOWERS.has(str(t.get("kind", ""))):
 			_add_tower(int(t["c"]), int(t["r"]), str(t["kind"]), clampi(int(t.get("tier", 0)), 0, 3), int(t.get("spent", 0)))
@@ -323,7 +408,8 @@ func _save() -> void:
 	for t in towers:
 		list.append({"c": t["c"], "r": t["r"], "kind": t["kind"], "tier": t["tier"], "spent": t["spent"]})
 	gs.defense = {"vong": round_no, "bac": silver, "tinh_dau": essence, "mang": lives, "boss": bosses,
-		"cay": list, "ky_luc": best, "thua": game_over}
+		"cay": list, "ky_luc": best, "thua": game_over, "oc": snail_killed,
+		"bo_lv": ally_lv["bo_canh_cam"], "chuon_lv": ally_lv["chuon_chuon"]}
 	gs.save_game()
 
 
@@ -332,9 +418,12 @@ func _new_run(save := true) -> void:
 		t["node"].queue_free()
 	towers.clear()
 	enemies.clear()
+	allies.clear()
 	shots.clear()
 	fx.clear()
 	spawn_queue.clear()
+	snail_killed = false
+	ally_lv = {"bo_canh_cam": 0, "chuon_chuon": 0}
 	round_no = 1
 	silver = START_SILVER
 	essence = 0
@@ -414,12 +503,23 @@ func tower_at(c: int, r: int) -> Dictionary:
 # =====================================================================
 
 func unlocked(kind: String) -> bool:
+	if ALLIES.has(kind):
+		return bosses >= int(ALLIES[kind]["mo"])
+	if int(TOWERS[kind]["mo"]) < 0:
+		return snail_killed
 	return bosses >= int(TOWERS[kind]["mo"])
+
+
+func lock_text(kind: String) -> String:
+	var m: int = int(ALLIES[kind]["mo"]) if ALLIES.has(kind) else int(TOWERS[kind]["mo"])
+	if m < 0:
+		return "Diệt boss ốc sên (vòng 44) để mở khóa"
+	return "Diệt %d boss để mở khóa (đã diệt %d)" % [m, bosses]
 
 
 func _select_kind(kind: String) -> void:
 	if not unlocked(kind):
-		toast("Diệt %d boss để mở khóa %s." % [TOWERS[kind]["mo"], TOWERS[kind]["ten"]])
+		toast("%s: %s." % [TOWERS[kind]["ten"], lock_text(kind)])
 		return
 	_close_info()
 	selected_kind = "" if selected_kind == kind else kind
@@ -548,9 +648,13 @@ func is_boss_round(r: int) -> bool:
 	return r % 3 == 0
 
 
+func is_snail_round(r: int) -> bool:
+	return SNAIL_ROUNDS.has(r)
+
+
 func hp_mult(r: int) -> float:
 	var k := float(r - 1)
-	return 1.0 + 0.12 * k + 0.0005 * k * k
+	return 1.0 + 0.12 * k + 0.0012 * k * k
 
 
 func start_wave() -> void:
@@ -561,7 +665,9 @@ func start_wave() -> void:
 	auto_t = 0.0
 	spawn_queue = _make_wave(round_no)
 	spawn_t = 0.5
-	if is_boss_round(round_no):
+	if is_snail_round(round_no):
+		toast("Vòng %d: Ốc sên chúa xuất hiện! Diệt nó để nhận 3 túi phân bón." % round_no, 3.5)
+	elif is_boss_round(round_no):
 		toast("Vòng %d: %s xuất hiện!" % [round_no, ENEMIES[_boss_of(round_no)]["ten"]])
 	else:
 		toast("Vòng %d bắt đầu!" % round_no)
@@ -594,6 +700,8 @@ func _make_wave(r: int) -> Array:
 		q.append({"kind": w[_rng.randi() % w.size()], "gap": gap})
 		if is_boss_round(r) and i == n / 2:
 			q.append({"kind": _boss_of(r), "gap": gap * 2.0})
+		if is_snail_round(r) and i == n / 3:
+			q.append({"kind": "boss_oc", "gap": gap * 2.0})
 	return q
 
 
@@ -638,11 +746,17 @@ func step(dt: float) -> void:
 			var s: Dictionary = spawn_queue.pop_front()
 			_spawn(s["kind"])
 			spawn_t = s["gap"]
+	ally_cd = maxf(0.0, ally_cd - dt)
+	_update_allies(dt)
 	_update_towers(dt)
 	_update_shots(dt)
 	_update_enemies(dt)
+	allies = allies.filter(func(x): return not x["dead"])
 	enemies = enemies.filter(func(x): return not x["dead"])
 	if spawn_queue.is_empty() and enemies.is_empty() and not game_over:
+		for a in allies:
+			fx.append({"type": "puff", "p": _ally_pos(a), "t": 0.0, "d": 0.5})
+		allies.clear()
 		_end_wave()
 
 
@@ -660,6 +774,9 @@ func _update_enemies(dt: float) -> void:
 			v = 0.0
 		if e["bound"]:
 			v *= 0.4 if e["boss"] else 0.0
+		if e.get("chan", false):
+			v = 0.0
+			e["chan"] = false
 		e["d"] += v * dt
 		e["slow"] = 1.0   # tulip đặt lại mỗi khung hình
 		if e["d"] >= total and not e["dead"]:
@@ -678,6 +795,126 @@ func _update_enemies(dt: float) -> void:
 
 func _pos(e: Dictionary) -> Vector2:
 	return path_pos(e["d"])
+
+
+# =====================================================================
+# Côn trùng phòng thủ
+# =====================================================================
+
+func ally_upgrade_cost(kind: String) -> Array:
+	## [bạc, tinh dầu] để lên cấp tiếp theo; [] nếu đã tối đa.
+	var lv: int = ally_lv[kind]
+	if kind == "bo_canh_cam":
+		return [40 + 30 * lv + 4 * lv * lv, 0]
+	if lv >= int(ALLIES[kind]["cap_toi_da"]):
+		return []
+	return [0, 3 + 2 * lv]
+
+
+func ally_hp(lv: int) -> float:
+	return ALLIES["bo_canh_cam"]["mau"] * hp_mult(round_no) * (1.0 + 0.25 * lv)
+
+
+func ally_speed(kind: String) -> float:
+	var v: float = ALLIES[kind]["toc"]
+	if kind == "chuon_chuon":
+		v *= pow(0.88, ally_lv[kind])
+	return v
+
+
+func release_ally(kind: String) -> bool:
+	if not unlocked(kind):
+		toast("%s: %s." % [ALLIES[kind]["ten"], lock_text(kind)])
+		return false
+	if not in_wave:
+		toast("Bấm Bắt đầu vòng rồi mới thả %s." % ALLIES[kind]["ten"])
+		return false
+	if ally_cd > 0.0:
+		return false
+	var price: int = ALLIES[kind]["gia"]
+	if silver < price:
+		toast("Không đủ bạc (cần %d)." % price)
+		return false
+	silver -= price
+	ally_cd = ALLY_COOLDOWN
+	var a := {"kind": kind, "d": path_length(), "dead": false, "cd": 0.3, "wob": _rng.randf() * TAU, "chan": false}
+	if kind == "bo_canh_cam":
+		a["hp"] = ally_hp(ally_lv[kind])
+		a["max"] = a["hp"]
+	allies.append(a)
+	fx.append({"type": "puff", "p": _ally_pos(a), "t": 0.0, "d": 0.4})
+	_refresh_hud()
+	return true
+
+
+func upgrade_ally(kind: String) -> bool:
+	if not unlocked(kind):
+		toast("%s: %s." % [ALLIES[kind]["ten"], lock_text(kind)])
+		return false
+	var cost := ally_upgrade_cost(kind)
+	if cost.is_empty():
+		toast("%s đã đạt cấp tối đa." % ALLIES[kind]["ten"])
+		return false
+	if silver < cost[0]:
+		toast("Không đủ bạc (cần %d)." % cost[0])
+		return false
+	if essence < cost[1]:
+		toast("Cần %d tinh dầu hoa hồng." % cost[1])
+		return false
+	silver -= cost[0]
+	essence -= cost[1]
+	ally_lv[kind] += 1
+	toast("%s lên cấp %d!" % [ALLIES[kind]["ten"], ally_lv[kind]])
+	_refresh_hud()
+	return true
+
+
+func _ally_pos(a: Dictionary) -> Vector2:
+	var p := path_pos(a["d"])
+	if a["kind"] == "chuon_chuon":
+		p += Vector2(0, -0.35 + sin(time * 3.0 + a["wob"]) * 0.12)
+	return p
+
+
+func _update_allies(dt: float) -> void:
+	for a in allies:
+		if a["dead"]:
+			continue
+		if a["kind"] == "bo_canh_cam":
+			# địch đang chạm bọ cánh cam thì bị chặn lại và cắn nó
+			var touching := false
+			for e in enemies:
+				if e["dead"] or ENEMIES[e["kind"]].get("bay", false):
+					continue
+				var gap: float = a["d"] - e["d"]
+				if gap >= -0.2 and gap <= 0.55:
+					touching = true
+					e["chan"] = true
+					a["hp"] -= ENEMIES[e["kind"]]["can"] * hp_mult(round_no) * dt
+			a["chan"] = touching
+			if a["hp"] <= 0.0:
+				a["dead"] = true
+				fx.append({"type": "puff", "p": _ally_pos(a), "t": 0.0, "d": 0.5})
+				continue
+			if not touching:
+				a["d"] -= ally_speed("bo_canh_cam") * dt
+		else:
+			a["d"] -= ally_speed("chuon_chuon") * dt
+			a["cd"] -= dt
+			if a["cd"] <= 0.0:
+				var info: Dictionary = ALLIES["chuon_chuon"]
+				var me := _ally_pos(a)
+				var tg := _targets_in(me, info["tam"])
+				if not tg.is_empty():
+					a["cd"] = info["nap"]
+					var dam: float = info["dam"] * (1.0 + 0.08 * (round_no - 1))
+					for k in 2:
+						var target: Dictionary = tg[mini(k, tg.size() - 1)]
+						shots.append({"p": me + Vector2(0, (k - 0.5) * 0.2), "e": target, "dam": dam,
+							"big": false, "type": "gai", "v": 9.0, "rot": 0.0})
+		if a["d"] <= 0.0:
+			a["dead"] = true
+			fx.append({"type": "puff", "p": _ally_pos(a), "t": 0.0, "d": 0.4})
 
 
 func _targets_in(center: Vector2, rad: float) -> Array:
@@ -800,12 +1037,20 @@ func _kill(e: Dictionary) -> void:
 	e["dead"] = true
 	if e["boss"]:
 		bosses += 1
-		var where: String = gs.defense_seed_reward(bosses)
-		var msg := "Diệt %s! Nhận 1 hạt giống: %s" % [info["ten"], where]
+		var bags := 3 if info.get("oc", false) else 1
+		gs.fertilizer += bags
+		gs._changed()
+		var msg := "Diệt %s! Nhận %d túi phân bón cho vườn." % [info["ten"], bags]
 		for k in TOWER_ORDER:
-			if int(TOWERS[k]["mo"]) == bosses and bosses > 0:
+			if int(TOWERS[k]["mo"]) == bosses:
 				msg += "  Mở khóa %s!" % TOWERS[k]["ten"]
-		toast(msg, 4.0)
+		for k in ALLY_ORDER:
+			if int(ALLIES[k]["mo"]) == bosses:
+				msg += "  Mở khóa %s!" % ALLIES[k]["ten"]
+		if info.get("oc", false) and not snail_killed:
+			snail_killed = true
+			msg += "  Mở khóa Hoa tulip!"
+		toast(msg, 4.5)
 		garden_changed.emit()
 		_refresh_shop()
 	_refresh_hud()
@@ -908,7 +1153,7 @@ func _refresh_hud() -> void:
 	if round_l == null:
 		return
 	var rn := mini(round_no, MAX_ROUND)
-	round_l.text = "Vòng %d/%d%s" % [rn, MAX_ROUND, "  (Boss)" if is_boss_round(rn) else ""]
+	round_l.text = "Vòng %d/%d%s" % [rn, MAX_ROUND, "  (Ốc sên chúa)" if is_snail_round(rn) else ("  (Boss)" if is_boss_round(rn) else "")]
 	lives_l.text = "♥ %d" % lives
 	silver_l.text = "Bạc %d" % silver
 	essence_l.text = "Tinh dầu %d" % essence
@@ -922,6 +1167,7 @@ func _refresh_hud() -> void:
 func _refresh_shop() -> void:
 	for k in shop_btns:
 		shop_btns[k].queue_redraw()
+	_refresh_allies()
 
 
 func _open_info(t: Dictionary) -> void:
@@ -1157,9 +1403,20 @@ class FxView extends Control:
 					draw_circle(pts[i], cs * 0.03, Color("8a2a3a"))
 				for k in 3:
 					draw_arc(b, cs * (0.22 + k * 0.06), game.time * 3 + k, game.time * 3 + k + 4.0, 12, Color("3f6b2a"), cs * 0.04)
+		# côn trùng phòng thủ
+		for a in game.allies:
+			_draw_ally(a, cs)
 		# đạn
 		for s in game.shots:
 			var p: Vector2 = s["p"] * cs
+			if s["type"] == "gai":
+				var dirv: Vector2 = (s.get("last", s["p"]) - s["p"])
+				if dirv.length() < 0.01:
+					dirv = Vector2.LEFT
+				dirv = dirv.normalized() * cs * 0.16
+				draw_line(p - dirv, p + dirv, Color("2f5a2a"), 3.0, true)
+				draw_circle(p + dirv, 2.0, Color("e8f0c8"))
+				continue
 			var r: float = cs * (0.2 if s["big"] else 0.11)
 			if s["big"]:
 				draw_circle(p, r * 1.5, Color(1, 0.9, 0.3, 0.3))
@@ -1234,10 +1491,8 @@ class FxView extends Control:
 			var h := w / asp
 			var rect := Rect2(p + Vector2(-w / 2.0, -h * 0.7 + bob), Vector2(w, h))
 			if flip:
-				draw_set_transform(Vector2(p.x * 2.0, 0), 0, Vector2(-1, 1))
-				rect.position.x = p.x - w / 2.0
-			draw_texture_rect(tx, rect, false, tint)
-			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+				rect = Rect2(rect.position.x + w, rect.position.y, -w, h)
+			draw_texture_rect_region(tx, rect, Rect2(Vector2.ZERO, tx.get_size()), tint)
 		else:
 			_code_bug(e["kind"], p + Vector2(0, bob - sz * 0.15), sz, -1.0 if flip else 1.0, tint)
 		if e["freeze"] > 0.0:
@@ -1257,6 +1512,33 @@ class FxView extends Control:
 		draw_rect(Rect2(p.x - bw / 2, by, bw * frac, cs * 0.1), hc)
 		if e["boss"]:
 			draw_string(game.FONT_BOLD, Vector2(p.x - bw / 2, by - 4), info["ten"], HORIZONTAL_ALIGNMENT_LEFT, -1, int(cs * 0.22), Color("fff1cf"))
+
+	func _draw_ally(a: Dictionary, cs: float) -> void:
+		var p: Vector2 = game._ally_pos(a) * cs
+		var fly: bool = a["kind"] == "chuon_chuon"
+		var sz := cs * (0.85 if fly else 0.72)
+		var dir: Vector2 = -game.path_dir(a["d"])
+		var flip := dir.x < -0.1
+		var moving: bool = fly or not a.get("chan", false)
+		var bob := sin(game.time * (14.0 if fly else 9.0) + a["wob"]) * cs * 0.03 if moving else 0.0
+		_ellipse(game.path_pos(a["d"]) * cs + Vector2(0, sz * 0.28), sz * (0.3 if fly else 0.4), sz * 0.1, Color(0, 0, 0, 0.15 if fly else 0.22))
+		var tx: Texture2D = game.tex(a["kind"])
+		if tx:
+			var asp := float(tx.get_width()) / tx.get_height()
+			var w := sz * (asp if asp > 1.0 else 1.0)
+			var h := w / asp
+			var rect := Rect2(Vector2(p.x - w / 2.0, p.y - h * 0.7 + bob), Vector2(w, h))
+			if flip:
+				rect = Rect2(rect.position.x + w, rect.position.y, -w, h)
+			draw_texture_rect_region(tx, rect, Rect2(Vector2.ZERO, tx.get_size()))
+		else:
+			draw_circle(p, sz * 0.3, Color("3fae6a") if not fly else Color("4ab0d8"))
+		if not fly:
+			var bw := sz * 0.8
+			var by := p.y - sz * 0.78 + bob
+			var frac: float = clampf(a["hp"] / a["max"], 0.0, 1.0)
+			draw_rect(Rect2(p.x - bw / 2 - 1, by - 1, bw + 2, cs * 0.08 + 2), Color(0.1, 0.05, 0.02, 0.85))
+			draw_rect(Rect2(p.x - bw / 2, by, bw * frac, cs * 0.08), Color("4fb4e8"))
 
 	func _ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
 		var pts := PackedVector2Array()
@@ -1352,8 +1634,8 @@ class TowerButton extends Button:
 			draw_string(f, Vector2(x, 52), "%d bạc" % info["gia"], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, col)
 			_wrap(game.FONT_MEDIUM, info["mo_ta"], Vector2(x, 72), size.x - x - 6, 13, Color("5a4a3a"))
 		else:
-			draw_string(f, Vector2(x, 54), "Khóa · diệt %d boss" % info["mo"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("6a4a2a"))
-			draw_string(game.FONT_MEDIUM, Vector2(x, 76), "(đã diệt %d)" % game.bosses, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("6a5a4a"))
+			draw_string(f, Vector2(x, 52), "Khóa · %d bạc" % info["gia"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("6a4a2a"))
+			_wrap(game.FONT_MEDIUM, game.lock_text(kind), Vector2(x, 72), size.x - x - 6, 13, Color("6a5a4a"))
 
 	func _wrap(f: Font, text: String, pos: Vector2, width: float, fs: int, col: Color) -> void:
 		var words := text.split(" ")

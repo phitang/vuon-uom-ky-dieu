@@ -6,7 +6,8 @@ func _ready() -> void:
 	gs.new_game()
 	var D = load("res://scripts/defense.gd")
 	var res := []
-	for trial in 3:
+	for trial in 4:
+		var use_allies: bool = trial >= 2
 		var d = D.new()
 		d.size = Vector2(1280, 720)
 		add_child(d)
@@ -20,10 +21,16 @@ func _ready() -> void:
 			while d.in_wave and guard < 200000:
 				d.step(1.0 / 30.0)
 				guard += 1
-			if d.round_no % 10 == 0:
+				# thả côn trùng phòng thủ khi dư bạc
+				if guard % 60 == 0 and use_allies:
+					if d.silver > 150 and d.unlocked("bo_canh_cam"):
+						d.release_ally("bo_canh_cam")
+					elif d.silver > 120 and d.unlocked("chuon_chuon"):
+						d.release_ally("chuon_chuon")
+			if d.round_no % 10 == 0 or d.round_no == 44:
 				log += " r%d:%d tháp,%d♥,bac%d" % [d.round_no, d.towers.size(), d.lives, d.silver]
 		res.append(d.round_no)
-		print("trial ", trial, " reached round ", d.round_no, " bosses ", d.bosses, log)
+		print("trial ", trial, " allies ", use_allies, " reached round ", d.round_no, " bosses ", d.bosses, " oc ", d.snail_killed, " bo_lv ", d.ally_lv, log)
 		d.queue_free()
 	get_tree().quit()
 
@@ -63,7 +70,7 @@ func _spend(d, spots: Array) -> void:
 		var counts := {}
 		for t in d.towers:
 			counts[t["kind"]] = counts.get(t["kind"], 0) + 1
-		for k in ["hong", "tulip", "sen", "xuong_rong"]:
+		for k in ["xuong_rong", "sen", "hong", "tulip"]:
 			if kinds.has(k) and counts.get(k, 0) < (2 if k != "hong" else 1):
 				want = k
 				break
@@ -79,6 +86,9 @@ func _spend(d, spots: Array) -> void:
 		if best != null:
 			d.upgrade(best)
 			continue
+		if d.unlocked("bo_canh_cam") and d.silver > 400:
+			if d.upgrade_ally("bo_canh_cam"):
+				continue
 		if d.silver >= price:
 			var placed := false
 			for s in spots:
