@@ -31,7 +31,8 @@ const GOLD := Color("d9b26a")
 ## Đường đi (toạ độ ô). Bắt đầu ngoài mép trái, kết thúc ngoài mép phải.
 const PATH := [Vector2(-1, 1), Vector2(2, 1), Vector2(2, 6), Vector2(6, 6), Vector2(6, 1), Vector2(10, 1), Vector2(10, 6), Vector2(14, 6)]
 
-## "can": sát thương mỗi giây khi cắn bọ cánh cam đang chặn đường. "bay": không bị bọ cánh cam chặn.
+## "can": sát thương mỗi giây khi cắn bọ cánh cam đang chặn đường.
+## "bay": không bị bọ cánh cam chặn, nhưng bị chuồn chuồn chặn (đốt chuồn chuồn 3 lần thì nó biến mất).
 const ENEMIES := {
 	"sau": {"ten": "Sâu xanh", "mau": 28.0, "toc": 1.0, "bac": 3, "mang": 1, "co": 0.72, "can": 6.0},
 	"bo_xit": {"ten": "Bọ xít", "mau": 55.0, "toc": 0.85, "bac": 5, "mang": 1, "co": 0.74, "can": 9.0},
@@ -50,11 +51,13 @@ const ALLIES := {
 	"bo_canh_cam": {"ten": "Bọ cánh cam", "gia": 30, "mo": 3, "toc": 0.9, "mau": 60.0,
 		"mo_ta": "Đi ngược đường chặn địch. Bị cắn hết máu thì biến mất.",
 		"nang_cap": "+25% máu mỗi cấp, chỉ tốn bạc, không giới hạn."},
-	"chuon_chuon": {"ten": "Chuồn chuồn", "gia": 45, "mo": 3, "toc": 2.4, "tam": 2.2, "nap": 0.7, "dam": 14.0,
-		"mo_ta": "Bay nhanh về cổng địch, bắn 2 đạn gai, không bị cản.",
+	"chuon_chuon": {"ten": "Chuồn chuồn", "gia": 45, "mo": 8, "toc": 2.4, "tam": 2.2, "nap": 0.7, "dam": 14.0,
+		"mo_ta": "Bay nhanh về cổng địch, bắn 2 đạn gai, không bị cản. Chặn được ong bắp cày chúa (bị đốt 3 lần thì biến mất).",
 		"nang_cap": "Bay chậm lại (bắn được lâu hơn), chỉ tốn tinh dầu.", "cap_toi_da": 8},
 }
 const ALLY_COOLDOWN := 1.5
+const STING_TIME := 0.8      # ong bắp cày chúa đốt chuồn chuồn mỗi 0.8 giây
+const STINGS_TO_KILL := 3
 const BOSS_ORDER := ["boss_ret", "boss_nhen", "boss_ong"]
 
 const TOWER_ORDER := ["sao", "xuong_rong", "sen", "hong", "tulip"]
@@ -65,14 +68,14 @@ const TOWERS := {
 		"tam": [2.4, 2.5, 2.6, 2.8], "nap": 0.8, "dam": [10.0, 18.0, 32.0, 55.0]},
 	"hong": {"ten": "Hoa hồng", "gia": 85, "mo": 12, "hoa": "hong", "mau": "do",
 		"mo_ta": "Tiết tinh dầu để nâng cấp cây.",
-		"huyen_thoai": "Quấn dây gai trói một con, rút máu từ từ đến chết.",
+		"huyen_thoai": "Dây gai mọc từ đất lên trói một con, rút máu từ từ đến chết (boss chỉ bị làm chậm).",
 		"tam": [2.4, 2.4, 2.4, 2.4], "tinh_dau": [10.0, 8.5, 7.0, 5.5], "dam": [0.0, 0.0, 0.0, 14.0]},
 	"tulip": {"ten": "Hoa tulip", "gia": 100, "mo": -1, "hoa": "tulip", "mau": "tim",
 		"mo_ta": "Tạo vùng làm chậm côn trùng đi qua.",
 		"huyen_thoai": "Vùng làm chậm còn làm mất máu.",
 		"tam": [1.5, 1.7, 1.9, 2.2], "cham": [0.30, 0.38, 0.46, 0.55], "dam": [0.0, 0.0, 0.0, 20.0]},
 	"sen": {"ten": "Hoa sen", "gia": 75, "mo": 10, "hoa": "sen", "mau": "hongnhat",
-		"mo_ta": "Bắn tia nước làm đóng băng một con.",
+		"mo_ta": "Bắn tia nước đóng băng một con (boss chỉ bị làm chậm).",
 		"huyen_thoai": "Bắn cùng lúc 2 tia nước.",
 		"tam": [3.0, 3.0, 3.1, 3.2], "nap": 2.6, "dam": [8.0, 14.0, 24.0, 40.0], "bang": [1.0, 1.3, 1.6, 2.0]},
 	"xuong_rong": {"ten": "Xương rồng", "gia": 65, "mo": 6, "hoa": "xr_cao", "mau": "trang",
@@ -772,8 +775,11 @@ func _update_enemies(dt: float) -> void:
 		if e["freeze"] > 0.0:
 			e["freeze"] -= dt
 			v = 0.0
+		if e.get("chill", 0.0) > 0.0:
+			e["chill"] -= dt
+			v *= 0.5
 		if e["bound"]:
-			v *= 0.4 if e["boss"] else 0.0
+			v *= 0.4 if e["boss"] else 0.0   # boss: dây gai chỉ làm chậm, không trói
 		if e.get("chan", false):
 			v = 0.0
 			e["chan"] = false
@@ -899,7 +905,28 @@ func _update_allies(dt: float) -> void:
 			if not touching:
 				a["d"] -= ally_speed("bo_canh_cam") * dt
 		else:
-			a["d"] -= ally_speed("chuon_chuon") * dt
+			# chuồn chuồn chặn ong bắp cày chúa (côn trùng bay); bị đốt 3 lần thì biến mất
+			var wasp_contact := false
+			for e in enemies:
+				if e["dead"] or not ENEMIES[e["kind"]].get("bay", false):
+					continue
+				var gap2: float = a["d"] - e["d"]
+				if gap2 >= -0.2 and gap2 <= 0.55:
+					wasp_contact = true
+					e["chan"] = true
+			a["chan"] = wasp_contact
+			if wasp_contact:
+				a["sting_t"] = a.get("sting_t", 0.0) + dt
+				if a["sting_t"] >= STING_TIME:
+					a["sting_t"] = 0.0
+					a["stings"] = a.get("stings", 0) + 1
+					fx.append({"type": "dot", "p": _ally_pos(a), "t": 0.0, "d": 0.4})
+					if a["stings"] >= STINGS_TO_KILL:
+						a["dead"] = true
+						fx.append({"type": "puff", "p": _ally_pos(a), "t": 0.0, "d": 0.5})
+						continue
+			else:
+				a["d"] -= ally_speed("chuon_chuon") * dt
 			a["cd"] -= dt
 			if a["cd"] <= 0.0:
 				var info: Dictionary = ALLIES["chuon_chuon"]
@@ -953,8 +980,11 @@ func _update_towers(dt: float) -> void:
 						tg.sort_custom(func(a, b): return (a["freeze"] <= 0.0) and not (b["freeze"] <= 0.0))
 						for k in mini(n, tg.size()):
 							var e: Dictionary = tg[k]
-							var dur: float = info["bang"][tier] * (0.5 if e["boss"] else 1.0)
-							e["freeze"] = maxf(e["freeze"], dur)
+							var dur: float = info["bang"][tier]
+							if e["boss"]:
+								e["chill"] = maxf(e.get("chill", 0.0), dur)   # boss: chỉ làm chậm, không đóng băng
+							else:
+								e["freeze"] = maxf(e["freeze"], dur)
 							_hurt(e, info["dam"][tier])
 							fx.append({"type": "beam", "a": c + Vector2(0, -0.4), "b": _pos(e), "t": 0.0, "d": 0.35})
 			"xuong_rong":
@@ -987,10 +1017,13 @@ func _update_towers(dt: float) -> void:
 						for e in _targets_in(c, rad):
 							if not e["bound"]:
 								e["bound"] = true
+								e["vine_t"] = 0.0
 								t["vine"] = e
 								v = e
+								fx.append({"type": "dat", "p": _pos(e), "t": 0.0, "d": 0.6})
 								break
 					if v != null:
+						v["vine_t"] = v.get("vine_t", 0.0) + dt
 						_hurt(v, info["dam"][3] * dt, false)
 
 
@@ -1224,7 +1257,7 @@ func _stat_text(t: Dictionary) -> String:
 		"hong":
 			var s := "1 giọt tinh dầu mỗi %.1f giây khi đang đánh" % info["tinh_dau"][tier]
 			if tier == 3:
-				s += "\nDây gai rút %d máu/giây" % int(info["dam"][3])
+				s += "\nDây gai trói và rút %d máu/giây (boss: chỉ chậm 60%%)" % int(info["dam"][3])
 			return s
 		"tulip":
 			var s2 := "Làm chậm %d%% · vùng %.1f ô" % [int(info["cham"][tier] * 100), info["tam"][tier]]
@@ -1232,7 +1265,7 @@ func _stat_text(t: Dictionary) -> String:
 				s2 += "\nGây %d máu/giây trong vùng" % int(info["dam"][3])
 			return s2
 		"sen":
-			return "Đóng băng %.1f giây · sát thương %d · tầm %.1f ô" % [info["bang"][tier], int(info["dam"][tier]), info["tam"][tier]]
+			return "Đóng băng %.1f giây (boss: chậm 50%%) · sát thương %d · tầm %.1f ô" % [info["bang"][tier], int(info["dam"][tier]), info["tam"][tier]]
 		"xuong_rong":
 			return "Gai %d sát thương mỗi con · tầm %.1f ô" % [int(info["dam"][tier]), info["tam"][tier]]
 	return ""
@@ -1385,24 +1418,14 @@ class FxView extends Control:
 		# côn trùng (con đi sau vẽ trước)
 		var order: Array = game.enemies.duplicate()
 		order.sort_custom(func(a, b): return game._pos(a).y < game._pos(b).y)
+		# dây gai hoa hồng huyền thoại mọc từ đất: phần sau lưng vẽ trước, phần trước vẽ sau con côn trùng
 		for e in order:
+			var tied: bool = e["bound"] and not e["dead"]
+			if tied:
+				_draw_vines(e, cs, false)
 			_draw_enemy(e, cs)
-		# dây gai hoa hồng huyền thoại
-		for t in game.towers:
-			var v = t["vine"]
-			if v != null and not v["dead"]:
-				var a := Vector2(t["c"] + 0.5, t["r"] + 0.1) * cs
-				var b: Vector2 = game._pos(v) * cs
-				var pts := PackedVector2Array()
-				for i in 13:
-					var k := i / 12.0
-					var p := a.lerp(b, k) + Vector2(0, -sin(k * PI) * cs * 0.35) + (b - a).orthogonal().normalized() * sin(k * 18.0 + game.time * 4.0) * cs * 0.05
-					pts.append(p)
-				draw_polyline(pts, Color("3f6b2a"), cs * 0.07, true)
-				for i in range(1, 12, 2):
-					draw_circle(pts[i], cs * 0.03, Color("8a2a3a"))
-				for k in 3:
-					draw_arc(b, cs * (0.22 + k * 0.06), game.time * 3 + k, game.time * 3 + k + 4.0, 12, Color("3f6b2a"), cs * 0.04)
+			if tied:
+				_draw_vines(e, cs, true)
 		# côn trùng phòng thủ
 		for a in game.allies:
 			_draw_ally(a, cs)
@@ -1449,6 +1472,16 @@ class FxView extends Control:
 					draw_colored_polygon(PackedVector2Array([p4 + Vector2(-cs * 0.08, -cs * 0.02), p4 + Vector2(0, -cs * 0.2), p4 + Vector2(cs * 0.08, -cs * 0.02)]), Color(1, 0.45, 0.65, 1 - k))
 				"burst":
 					draw_circle(e["p"] * cs, cs * 0.7 * k, Color(1, 0.85, 0.3, 0.5 * (1 - k)))
+				"dot":
+					var q2: Vector2 = e["p"] * cs
+					for i in 6:
+						var dir3 := Vector2.from_angle(TAU * i / 6.0)
+						draw_line(q2 + dir3 * cs * 0.1, q2 + dir3 * cs * (0.18 + 0.2 * k), Color(1, 0.85, 0.2, 1 - k), 3.0, true)
+				"dat":
+					for i in 9:
+						var ang := -PI * (0.15 + 0.7 * i / 8.0)
+						var q: Vector2 = e["p"] * cs + Vector2(0, cs * 0.3) + Vector2.from_angle(ang) * cs * 0.6 * k + Vector2(0, cs * 0.8 * k * k)
+						draw_circle(q, cs * 0.05 * (1 - k * 0.5), Color(0.42, 0.28, 0.15, 1 - k))
 				"puff":
 					for i in 6:
 						draw_circle(e["p"] * cs + Vector2.from_angle(i) * cs * 0.4 * k, cs * 0.12 * (1 - k), Color(1, 1, 1, 0.7 * (1 - k)))
@@ -1458,6 +1491,98 @@ class FxView extends Control:
 						_star(e["p"] * cs + dir2 * cs * 0.6 * k, cs * 0.08 * (1 - k * 0.5), k * 5, Color(e["col"], 1 - k))
 				"ouch":
 					draw_string(game.FONT_BOLD, e["p"] * cs + Vector2(-cs * 0.3, -cs * k), "-♥", HORIZONTAL_ALIGNMENT_LEFT, -1, int(cs * 0.4), Color(1, 0.3, 0.3, 1 - k))
+
+	## Dây gai mọc lên từ mặt đất dưới chân con côn trùng rồi quấn quanh thân.
+	func _draw_vines(e: Dictionary, cs: float, front: bool) -> void:
+		var info: Dictionary = game.ENEMIES[e["kind"]]
+		var sz: float = info["co"] * cs
+		var p: Vector2 = game._pos(e) * cs
+		var g: float = clampf(e.get("vine_t", 1.0) / 0.5, 0.0, 1.0)   # độ mọc 0..1
+		g = 1.0 - pow(1.0 - g, 3.0)
+		var base_y := p.y + sz * 0.26
+		var tm: float = game.time
+		var stem := Color("3d6b2c")
+		var stem_hi := Color("5f8f3a")
+		var thorn := Color("7a2232")
+		if not front:
+			# đất nứt, ụ đất quanh chân
+			var mound := PackedVector2Array()
+			for k in 20:
+				var a := TAU * k / 20.0
+				mound.append(Vector2(p.x, base_y) + Vector2(cos(a) * sz * 0.55, sin(a) * sz * 0.14) * (0.6 + 0.4 * g))
+			draw_colored_polygon(mound, Color(0.45, 0.3, 0.17, 0.85 * g))
+			for k in 5:
+				var a2 := -2.6 + k * 1.3
+				var c0 := Vector2(p.x, base_y)
+				draw_line(c0 + Vector2(cos(a2), sin(a2) * 0.3) * sz * 0.12, c0 + Vector2(cos(a2), sin(a2) * 0.3) * sz * 0.5 * g, Color(0.25, 0.15, 0.08, 0.8), 2.0, true)
+		# 3 sợi dây: hai bên ở sau lưng, sợi giữa ở trước
+		var outline := Color("24401b")
+		var offs := [-0.36, 0.06, 0.4]
+		for i in offs.size():
+			if (i == 1) != front:
+				continue
+			var bx: float = p.x + offs[i] * sz
+			var h: float = sz * (0.7 if i == 1 else 0.85) * g * (0.45 if e["boss"] else 1.0)
+			var pts := PackedVector2Array()
+			var n := 8
+			for j in n + 1:
+				var k := float(j) / n
+				var x: float = lerpf(bx, p.x + offs[i] * 0.3 * sz, k) + sin(k * 4.0 + i * 2.1 + tm * 1.6) * sz * 0.05 * k
+				pts.append(Vector2(x, base_y - h * k))
+			var w0 := maxf(cs * 0.1, sz * 0.12)
+			for j in n:
+				var w: float = lerpf(w0, w0 * 0.35, float(j) / n)
+				draw_line(pts[j], pts[j + 1], outline, w + 3.0, true)
+			for j in n:
+				var w: float = lerpf(w0, w0 * 0.35, float(j) / n)
+				draw_line(pts[j], pts[j + 1], stem, w, true)
+				draw_line(pts[j] + Vector2(-w * 0.22, 0), pts[j + 1] + Vector2(-w * 0.22, 0), stem_hi, w * 0.28, true)
+			# gai nhọn mọc chĩa ra ngoài
+			var out_dir := -1.0 if offs[i] < 0.0 else 1.0
+			for j in [2, 5]:
+				var d: Vector2 = (pts[j + 1] - pts[j]).normalized()
+				var w2: float = lerpf(w0, w0 * 0.35, float(j) / n) * 0.5
+				var side := Vector2(out_dir, -0.35).normalized()
+				var b0: Vector2 = pts[j] + side * w2
+				draw_colored_polygon(PackedVector2Array([b0 + d * w2, b0 - d * w2, b0 + side * w2 * 2.2]), thorn)
+			# lá
+			if g > 0.5:
+				var lp: Vector2 = pts[4]
+				var ld := Vector2.from_angle(-PI / 2 - out_dir * 0.9)
+				var ln := ld.orthogonal()
+				var leaf := PackedVector2Array()
+				for k in 9:
+					var t := k / 8.0
+					leaf.append(lp + ld * sz * 0.2 * t + ln * sin(t * PI) * sz * 0.06)
+				for k in range(7, 0, -1):
+					var t := k / 8.0
+					leaf.append(lp + ld * sz * 0.2 * t - ln * sin(t * PI) * sz * 0.06)
+				draw_colored_polygon(leaf, Color("72b244"))
+				draw_line(lp, lp + ld * sz * 0.17, Color("4c8a2c"), 1.5, true)
+			# ngọn xoắn
+			var tip: Vector2 = pts[n]
+			draw_arc(tip + Vector2(out_dir * sz * 0.045, 0), sz * 0.045, 0.0, PI * 1.5, 10, stem, maxf(2.0, w0 * 0.3), true)
+		# dải dây quấn ngang thân (nửa sau vẽ sau, nửa trước vẽ trước)
+		if g > 0.55 and not e["boss"]:
+			var k2: float = (g - 0.55) / 0.45
+			var rings := 1
+			for ring in rings:
+				var cy: float = p.y - sz * (0.02 + ring * 0.3)
+				var rx := sz * (0.46 - ring * 0.06)
+				var ry := sz * 0.11
+				var a0: float = 0.0 if front else PI
+				var pts2 := PackedVector2Array()
+				for j in 17:
+					var a := a0 + PI * j / 16.0 * k2
+					pts2.append(Vector2(p.x + cos(a) * rx, cy + sin(a) * ry))
+				var bw := maxf(cs * 0.06, sz * 0.07)
+				draw_polyline(pts2, outline, bw + 3.0, true)
+				draw_polyline(pts2, stem, bw, true)
+				if front:
+					for j in [5, 11]:
+						if j < pts2.size():
+							var q: Vector2 = pts2[j]
+							draw_colored_polygon(PackedVector2Array([q + Vector2(-bw * 0.45, 0), q + Vector2(bw * 0.45, 0), q + Vector2(0, bw * 1.3)]), thorn)
 
 	func _star(p: Vector2, r: float, rot: float, col: Color) -> void:
 		var pts := PackedVector2Array()
@@ -1483,6 +1608,8 @@ class FxView extends Control:
 			tint = Color(1.6, 1.6, 1.6)
 		if e["freeze"] > 0.0:
 			tint = Color(0.7, 0.9, 1.4)
+		elif e.get("chill", 0.0) > 0.0:
+			tint = Color(0.82, 0.95, 1.3)
 		elif e["slow"] < 0.99:
 			tint = tint * Color(1.0, 0.92, 1.1)
 		if tx:
@@ -1533,6 +1660,10 @@ class FxView extends Control:
 			draw_texture_rect_region(tx, rect, Rect2(Vector2.ZERO, tx.get_size()))
 		else:
 			draw_circle(p, sz * 0.3, Color("3fae6a") if not fly else Color("4ab0d8"))
+		if fly and a.get("stings", 0) > 0:
+			for i in game.STINGS_TO_KILL:
+				var hc := Color("ff6b7a") if i >= a.get("stings", 0) else Color(0.3, 0.3, 0.3, 0.6)
+				draw_circle(Vector2(p.x - cs * 0.15 + i * cs * 0.15, p.y - sz * 0.75), cs * 0.05, hc)
 		if not fly:
 			var bw := sz * 0.8
 			var by := p.y - sz * 0.78 + bob
