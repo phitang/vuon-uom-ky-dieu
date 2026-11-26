@@ -56,6 +56,16 @@ const ALLIES := {
 		"nang_cap": "Bay chậm lại (bắn được lâu hơn), chỉ tốn tinh dầu.", "cap_toi_da": 8},
 }
 const ALLY_COOLDOWN := 1.5
+## Âm thanh hiệu ứng (cắt từ dansao.mp3, gaixuongrong.mp3, tualipbonghong.mp3)
+const SFX := {
+	"dan_sao": "res://am_thanh/dan_sao.wav",       # hoa sao bắn đạn
+	"tia_nuoc": "res://am_thanh/tia_nuoc.wav",     # hoa sen bắn tia nước
+	"gai": "res://am_thanh/gai.wav",               # xương rồng bắn gai
+	"gai_chuon": "res://am_thanh/gai_chuon.wav",   # chuồn chuồn bắn gai
+	"tulip_hong": "res://am_thanh/tulip_hong.wav", # địch chạm vùng tulip / dây gai hoa hồng mọc lên
+}
+const SFX_GAP := {"dan_sao": 0.07, "tia_nuoc": 0.12, "gai": 0.1, "gai_chuon": 0.09, "tulip_hong": 0.35}
+const SFX_VOICES := 8
 const STING_TIME := 0.8      # ong bắp cày chúa đốt chuồn chuồn mỗi 0.8 giây
 const STINGS_TO_KILL := 3
 const BOSS_ORDER := ["boss_ret", "boss_nhen", "boss_ong"]
@@ -101,6 +111,11 @@ var ally_lv := {"bo_canh_cam": 0, "chuon_chuon": 0}
 var ally_cd := 0.0
 var allies: Array = []     # côn trùng phòng thủ đang trên đường
 var ally_btns := {}        # loại -> {"tha": Button, "nang": Button, "mo_ta": Label}
+var wave_snap := {}        # trạng thái lúc bắt đầu vòng hiện tại (để "Chơi lại vòng này")
+var retry_b: Button
+var _sfx_players: Array = []
+var _sfx_last := {}
+var _sfx_streams := {}
 var best := 0
 var towers: Array = []     # {"c","r","kind","tier","spent","cd","node","vine"}
 var enemies: Array = []
@@ -178,10 +193,10 @@ func _build() -> void:
 	top.offset_bottom = TOP_H
 	add_child(top)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 8)
 	top.add_child(row)
 	var back := _btn("Về vườn", func(): _go_back(), Color("4a5866"))
-	back.custom_minimum_size = Vector2(150, 52)
+	back.custom_minimum_size = Vector2(112, 52)
 	row.add_child(back)
 	round_l = _hud_label(Color("fff1cf"))
 	row.add_child(round_l)
@@ -195,14 +210,19 @@ func _build() -> void:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(sp)
 	auto_b = _btn("Tự động: Tắt", func(): _toggle_auto(), Color("4a5866"))
-	auto_b.custom_minimum_size = Vector2(180, 52)
+	auto_b.custom_minimum_size = Vector2(142, 52)
 	row.add_child(auto_b)
 	speed_b = _btn("Tốc độ x1", func(): _toggle_speed(), Color("4a5866"))
-	speed_b.custom_minimum_size = Vector2(150, 52)
+	speed_b.custom_minimum_size = Vector2(112, 52)
 	row.add_child(speed_b)
+	retry_b = _btn("Chơi lại vòng", func(): _ask_retry(), Color("8a5a2b"))
+	retry_b.custom_minimum_size = Vector2(146, 52)
+	row.add_child(retry_b)
 	start_b = _btn("Bắt đầu vòng", func(): start_wave(), Color("3e7d4a"))
-	start_b.custom_minimum_size = Vector2(200, 52)
+	start_b.custom_minimum_size = Vector2(166, 52)
 	row.add_child(start_b)
+	for b in [back, auto_b, speed_b, retry_b, start_b]:
+		b.add_theme_font_size_override("font_size", 17)
 
 	# Cột cây bên phải
 	var side := PanelContainer.new()
@@ -257,6 +277,14 @@ func _build() -> void:
 	toast_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_l.z_index = 60
 	add_child(toast_l)
+
+	for i in SFX_VOICES:
+		var ap := AudioStreamPlayer.new()
+		add_child(ap)
+		_sfx_players.append(ap)
+	for k in SFX:
+		if ResourceLoader.exists(SFX[k]):
+			_sfx_streams[k] = load(SFX[k])
 
 	end_panel = PanelContainer.new()
 	end_panel.add_theme_stylebox_override("panel", UiSkin.panel_box(Color("fffaf0"), Color("7a4a24"), 24.0))
@@ -326,7 +354,7 @@ func _refresh_allies() -> void:
 func _hud_label(col: Color) -> Label:
 	var l := Label.new()
 	l.add_theme_font_override("font", FONT_BOLD)
-	l.add_theme_font_size_override("font_size", 23)
+	l.add_theme_font_size_override("font_size", 20)
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
 	l.add_theme_constant_override("outline_size", 4)
@@ -388,9 +416,41 @@ func cell_size() -> float:
 func _load() -> void:
 	var d: Dictionary = gs.defense if typeof(gs.defense) == TYPE_DICTIONARY else {}
 	best = int(d.get("ky_luc", 0))
-	if d.is_empty() or bool(d.get("thua", false)):
+	var snap = d.get("truoc_vong", {})
+	wave_snap = snap if typeof(snap) == TYPE_DICTIONARY else {}
+	if d.is_empty():
 		_new_run(false)
 		return
+	if bool(d.get("thua", false)):
+		# thua lần trước: cho chọn chơi lại vòng đó hoặc chơi lại từ đầu
+		if wave_snap.is_empty():
+			_new_run(false)
+			return
+		_apply_state(wave_snap)
+		game_over = true
+		_show_lose_panel()
+		return
+	_apply_state(d)
+	if round_no > MAX_ROUND:
+		_show_victory()
+
+
+## Đặt lại toàn bộ ván theo một trạng thái đã lưu (dùng khi nạp game và khi chơi lại vòng).
+func _apply_state(d: Dictionary) -> void:
+	for t in towers:
+		t["node"].queue_free()
+	towers.clear()
+	enemies.clear()
+	allies.clear()
+	shots.clear()
+	fx.clear()
+	spawn_queue.clear()
+	in_wave = false
+	game_over = false
+	selected_kind = ""
+	_close_info()
+	if end_panel:
+		end_panel.visible = false
 	round_no = clampi(int(d.get("vong", 1)), 1, MAX_ROUND + 1)
 	silver = int(d.get("bac", START_SILVER))
 	essence = int(d.get("tinh_dau", 0))
@@ -402,18 +462,43 @@ func _load() -> void:
 		if typeof(t) == TYPE_DICTIONARY and TOWERS.has(str(t.get("kind", ""))):
 			_add_tower(int(t["c"]), int(t["r"]), str(t["kind"]), clampi(int(t.get("tier", 0)), 0, 3), int(t.get("spent", 0)))
 	_refresh_hud()
-	if round_no > MAX_ROUND:
-		_show_victory()
+	if map:
+		map.queue_redraw()
 
 
-func _save() -> void:
+func _state_dict() -> Dictionary:
 	var list: Array = []
 	for t in towers:
 		list.append({"c": t["c"], "r": t["r"], "kind": t["kind"], "tier": t["tier"], "spent": t["spent"]})
-	gs.defense = {"vong": round_no, "bac": silver, "tinh_dau": essence, "mang": lives, "boss": bosses,
+	return {"vong": round_no, "bac": silver, "tinh_dau": essence, "mang": lives, "boss": bosses,
 		"cay": list, "ky_luc": best, "thua": game_over, "oc": snail_killed,
 		"bo_lv": ally_lv["bo_canh_cam"], "chuon_lv": ally_lv["chuon_chuon"]}
+
+
+func _save() -> void:
+	var d := _state_dict()
+	d["truoc_vong"] = wave_snap
+	gs.defense = d
 	gs.save_game()
+
+
+## Chơi lại vòng hiện tại từ lúc bắt đầu vòng (cây, bạc, tinh dầu, máu như trước vòng).
+func retry_round() -> void:
+	if wave_snap.is_empty():
+		return
+	var keep_best := best
+	_apply_state(wave_snap)
+	best = keep_best
+	_save()
+	toast("Chơi lại vòng %d. Sắp xếp lại cây rồi bấm Bắt đầu vòng." % round_no)
+
+
+func _ask_retry() -> void:
+	if not in_wave or wave_snap.is_empty():
+		toast("Chỉ chơi lại được khi đang đánh một vòng.")
+		return
+	_show_panel("Chơi lại vòng %d?" % round_no, "Mọi thứ trở về lúc bắt đầu vòng này: cây, bạc, tinh dầu và máu.",
+		[["Chơi lại vòng %d" % round_no, func(): retry_round(), Color("3e7d4a")], ["Đánh tiếp", func(): end_panel.visible = false, Color("4a5866")]])
 
 
 func _new_run(save := true) -> void:
@@ -427,6 +512,7 @@ func _new_run(save := true) -> void:
 	spawn_queue.clear()
 	snail_killed = false
 	ally_lv = {"bo_canh_cam": 0, "chuon_chuon": 0}
+	wave_snap = {}
 	round_no = 1
 	silver = START_SILVER
 	essence = 0
@@ -657,13 +743,23 @@ func is_snail_round(r: int) -> bool:
 
 func hp_mult(r: int) -> float:
 	var k := float(r - 1)
-	return 1.0 + 0.12 * k + 0.0012 * k * k
+	var m := 1.0 + 0.12 * k + 0.0012 * k * k
+	# giai đoạn sau (từ vòng 40) côn trùng trâu hơn hẳn
+	if r > 40:
+		m *= 1.0 + 0.011 * (r - 40)
+	return m
+
+
+## Côn trùng giai đoạn sau đi nhanh hơn một chút (vòng 60 trở đi).
+func speed_mult(r: int) -> float:
+	return 1.0 + 0.004 * maxi(0, r - 60)
 
 
 func start_wave() -> void:
 	if in_wave or game_over or round_no > MAX_ROUND:
 		return
-	_save()   # lưu trạng thái đầu vòng: thoát giữa chừng thì chơi lại vòng này
+	wave_snap = _state_dict()
+	_save()   # lưu trạng thái đầu vòng: thoát giữa chừng hoặc thua thì chơi lại được vòng này
 	in_wave = true
 	auto_t = 0.0
 	spawn_queue = _make_wave(round_no)
@@ -690,9 +786,13 @@ func _make_wave(r: int) -> Array:
 	if r >= 12:
 		kinds.append("chau_chau")
 	var n := mini(6 + int(r * 0.7), 45)
+	if r > 50:
+		n += (r - 50) / 2   # giai đoạn sau đông hơn
 	if is_boss_round(r):
 		n = maxi(4, n / 2)
 	var gap := maxf(0.35, 1.0 - r * 0.012)
+	if r > 50:
+		gap = maxf(0.28, gap - (r - 50) * 0.002)
 	var q: Array = []
 	for i in n:
 		# loài mới hay xuất hiện hơn loài cũ một chút
@@ -719,6 +819,8 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	if paused_check.is_valid() and paused_check.call():
+		return
+	if end_panel.visible:
 		return
 	if toast_t > 0.0:
 		toast_t -= delta
@@ -771,7 +873,7 @@ func _update_enemies(dt: float) -> void:
 			continue
 		e["hit"] = maxf(0.0, e["hit"] - dt)
 		var info: Dictionary = ENEMIES[e["kind"]]
-		var v: float = info["toc"] * e["slow"]
+		var v: float = info["toc"] * e["slow"] * speed_mult(round_no)
 		if e["freeze"] > 0.0:
 			e["freeze"] -= dt
 			v = 0.0
@@ -785,6 +887,8 @@ func _update_enemies(dt: float) -> void:
 			e["chan"] = false
 		e["d"] += v * dt
 		e["slow"] = 1.0   # tulip đặt lại mỗi khung hình
+		e["in_z"] = e.get("in_z_now", false)
+		e["in_z_now"] = false
 		if e["d"] >= total and not e["dead"]:
 			gone.append(e)
 	for e in gone:
@@ -935,6 +1039,7 @@ func _update_allies(dt: float) -> void:
 				if not tg.is_empty():
 					a["cd"] = info["nap"]
 					var dam: float = info["dam"] * (1.0 + 0.08 * (round_no - 1))
+					sfx("gai_chuon")
 					for k in 2:
 						var target: Dictionary = tg[mini(k, tg.size() - 1)]
 						shots.append({"p": me + Vector2(0, (k - 0.5) * 0.2), "e": target, "dam": dam,
@@ -970,12 +1075,14 @@ func _update_towers(dt: float) -> void:
 						var big := tier == 3
 						shots.append({"p": c + Vector2(0, -0.45), "e": tg[0], "dam": info["dam"][tier] * (1.6 if big else 1.0),
 							"big": big, "type": "sao", "v": 7.0, "rot": 0.0})
+						sfx("dan_sao")
 			"sen":
 				if t["cd"] <= 0.0:
 					var tg := _targets_in(c, rad)
 					if not tg.is_empty():
 						t["cd"] = info["nap"]
 						var n := 2 if tier == 3 else 1
+						sfx("tia_nuoc")
 						# ưu tiên con chưa bị đóng băng
 						tg.sort_custom(func(a, b): return (a["freeze"] <= 0.0) and not (b["freeze"] <= 0.0))
 						for k in mini(n, tg.size()):
@@ -995,8 +1102,12 @@ func _update_towers(dt: float) -> void:
 						for e in tg:
 							_hurt(e, info["dam"][tier])
 						fx.append({"type": "spikes", "p": c, "r": rad, "t": 0.0, "d": 0.4})
+						sfx("gai")
 			"tulip":
 				for e in _targets_in(c, rad):
+					if not e.get("in_z", false):
+						sfx("tulip_hong")   # vừa bước vào vùng làm chậm
+					e["in_z_now"] = true
 					e["slow"] = minf(e["slow"], 1.0 - info["cham"][tier])
 					if tier == 3:
 						_hurt(e, info["dam"][3] * dt, false)
@@ -1021,6 +1132,7 @@ func _update_towers(dt: float) -> void:
 								t["vine"] = e
 								v = e
 								fx.append({"type": "dat", "p": _pos(e), "t": 0.0, "d": 0.6})
+								sfx("tulip_hong")
 								break
 					if v != null:
 						v["vine_t"] = v.get("vine_t", 0.0) + dt
@@ -1112,7 +1224,14 @@ func _lose() -> void:
 	spawn_queue.clear()
 	best = maxi(best, round_no - 1)
 	_save()
-	_show_end("Khu vườn bị côn trùng tràn vào!", "Bạn trụ được đến vòng %d.\nKỷ lục: vòng %d." % [round_no, best])
+	_show_lose_panel()
+
+
+func _show_lose_panel() -> void:
+	var btns := [["Chơi lại từ đầu", func(): _new_run(), Color("b8473a")], ["Về vườn", func(): _go_back(), Color("4a5866")]]
+	if not wave_snap.is_empty():
+		btns.push_front(["Chơi lại vòng %d" % int(wave_snap.get("vong", round_no)), func(): retry_round(), Color("3e7d4a")])
+	_show_panel("Khu vườn bị côn trùng tràn vào!", "Bạn trụ được đến vòng %d.\nKỷ lục: vòng %d." % [round_no, best], btns)
 
 
 func _show_victory() -> void:
@@ -1120,6 +1239,11 @@ func _show_victory() -> void:
 
 
 func _show_end(title: String, body: String) -> void:
+	_show_panel(title, body, [["Chơi lại từ đầu", func(): _new_run(), Color("3e7d4a")], ["Về vườn", func(): _go_back(), Color("4a5866")]])
+
+
+## Bảng giữa màn hình với các nút [chữ, hàm, màu].
+func _show_panel(title: String, body: String, buttons: Array) -> void:
 	_close_info()
 	for c in end_panel.get_children():
 		c.queue_free()
@@ -1131,12 +1255,11 @@ func _show_end(title: String, body: String) -> void:
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(h)
-	var again := _btn("Chơi lại từ đầu", func(): _new_run(), Color("3e7d4a"))
-	again.custom_minimum_size = Vector2(230, 56)
-	h.add_child(again)
-	var back := _btn("Về vườn", func(): _go_back(), Color("4a5866"))
-	back.custom_minimum_size = Vector2(160, 56)
-	h.add_child(back)
+	h.add_theme_constant_override("separation", 12)
+	for spec in buttons:
+		var b := _btn(spec[0], spec[1], spec[2])
+		b.custom_minimum_size = Vector2(190, 56)
+		h.add_child(b)
 	for l in v.get_children():
 		if l is Label:
 			l.custom_minimum_size.x = 520
@@ -1148,6 +1271,29 @@ func _show_end(title: String, body: String) -> void:
 # =====================================================================
 # Giao diện phụ
 # =====================================================================
+
+## Phát một tiếng hiệu ứng (bỏ qua nếu vừa phát cùng tiếng quá gần nhau, hoặc âm thanh đang tắt).
+func sfx(name: String) -> void:
+	if not visible or not _sfx_streams.has(name):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(_sfx_last.get(name, -10.0)) < SFX_GAP.get(name, 0.08):
+		return
+	_sfx_last[name] = now
+	var vol := 0.7
+	var music := get_node_or_null("/root/Music")
+	if music:
+		if not music.enabled:
+			return
+		vol = music.volume
+	for ap in _sfx_players:
+		if not ap.playing:
+			ap.stream = _sfx_streams[name]
+			ap.volume_db = linear_to_db(maxf(vol, 0.0001)) - 4.0
+			ap.pitch_scale = randf_range(0.95, 1.06)
+			ap.play()
+			return
+
 
 func toast(text: String, dur := 2.6) -> void:
 	toast_l.text = text
@@ -1186,11 +1332,13 @@ func _refresh_hud() -> void:
 	if round_l == null:
 		return
 	var rn := mini(round_no, MAX_ROUND)
-	round_l.text = "Vòng %d/%d%s" % [rn, MAX_ROUND, "  (Ốc sên chúa)" if is_snail_round(rn) else ("  (Boss)" if is_boss_round(rn) else "")]
+	round_l.text = "Vòng %d/%d%s" % [rn, MAX_ROUND, " · Ốc sên" if is_snail_round(rn) else (" · Boss" if is_boss_round(rn) else "")]
 	lives_l.text = "♥ %d" % lives
 	silver_l.text = "Bạc %d" % silver
 	essence_l.text = "Tinh dầu %d" % essence
+	round_l.custom_minimum_size.x = 0
 	start_b.disabled = in_wave or game_over or round_no > MAX_ROUND
+	retry_b.disabled = not in_wave or wave_snap.is_empty()
 	start_b.text = "Đang đánh…" if in_wave else "Bắt đầu vòng"
 	_refresh_shop()
 	if not info_tower.is_empty() and info_panel.visible:
@@ -1618,8 +1766,10 @@ class FxView extends Control:
 			var h := w / asp
 			var rect := Rect2(p + Vector2(-w / 2.0, -h * 0.7 + bob), Vector2(w, h))
 			if flip:
-				rect = Rect2(rect.position.x + w, rect.position.y, -w, h)
+				# lật gương quanh tâm con côn trùng (giữ hình thẳng hàng với thanh máu)
+				draw_set_transform(Vector2(p.x * 2.0, 0.0), 0.0, Vector2(-1, 1))
 			draw_texture_rect_region(tx, rect, Rect2(Vector2.ZERO, tx.get_size()), tint)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			_code_bug(e["kind"], p + Vector2(0, bob - sz * 0.15), sz, -1.0 if flip else 1.0, tint)
 		if e["freeze"] > 0.0:
@@ -1656,8 +1806,9 @@ class FxView extends Control:
 			var h := w / asp
 			var rect := Rect2(Vector2(p.x - w / 2.0, p.y - h * 0.7 + bob), Vector2(w, h))
 			if flip:
-				rect = Rect2(rect.position.x + w, rect.position.y, -w, h)
+				draw_set_transform(Vector2(p.x * 2.0, 0.0), 0.0, Vector2(-1, 1))
 			draw_texture_rect_region(tx, rect, Rect2(Vector2.ZERO, tx.get_size()))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			draw_circle(p, sz * 0.3, Color("3fae6a") if not fly else Color("4ab0d8"))
 		if fly and a.get("stings", 0) > 0:
